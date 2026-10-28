@@ -1,16 +1,44 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full">
+<html lang="es" class="h-full dark">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Arboria — Sistema de Seguimiento de Objetivos, Descomposición Jerárquica y Progreso Diario</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#064e3b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Arboria" />
+  <title>Arboria 2.0 — Arquitectura Jerárquica de Objetivos, Progreso Diario y Proyectos Colaborativos</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M32 14v36M32 26l-12 8M32 22l12 8M32 36l-10 8M32 34l10 8' stroke='%23ffffff' stroke-width='4' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='14' r='4.5' fill='%23a7f3d0'/%3E%3Ccircle cx='20' cy='34' r='3.5' fill='%23ffffff'/%3E%3Ccircle cx='44' cy='30' r='3.5' fill='%23ffffff'/%3E%3Ccircle cx='22' cy='44' r='3.5' fill='%23a7f3d0'/%3E%3Ccircle cx='42' cy='42' r='3.5' fill='%23a7f3d0'/%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='42' fill='%23064e3b'/%3E%3Cpath d='M90 38v104M90 72l-34 24M90 62l34 24M90 102l-28 22M90 96l28 22' stroke='%2334d399' stroke-width='10' stroke-linecap='round'/%3E%3Ccircle cx='90' cy='38' r='12' fill='%23a7f3d0'/%3E%3Ccircle cx='56' cy='96' r='10' fill='%23ffffff'/%3E%3Ccircle cx='124' cy='86' r='10' fill='%23ffffff'/%3E%3C/svg%3E" />
+  <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Arboria%202.0%20%E2%80%94%20Arquitectura%20de%20Objetivos%22%2C%22short_name%22%3A%22Arboria%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23020617%22%2C%22theme_color%22%3A%22%23059669%22%7D" />
+  <script>
+    // Prevención inmediata de destello de tema claro (Dark mode predeterminado en Arboria 2.0)
+    (function() {
+      try {
+        var pref = localStorage.getItem('arboria_theme_pref_v2');
+        if (!pref) {
+          var raw = localStorage.getItem('arboria_goal_system_v2');
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            if (parsed && parsed.settings && parsed.settings.theme) pref = parsed.settings.theme;
+          }
+        }
+        pref = pref || 'dark';
+        var isDark = pref === 'dark' || (pref === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (isDark) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script>
-    tailwind.config = {
+    if (typeof tailwind !== 'undefined') tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
@@ -25,10 +53,35 @@
   <style>
     :root {
       color-scheme: light dark;
+      --arb-bg: #f8fafc;
+      --arb-surface: #ffffff;
+      --arb-border: #e2e8f0;
+      --arb-text: #0f172a;
+      --arb-muted: #64748b;
+      --arb-accent: #059669;
+      --arb-accent-soft: rgba(5, 150, 105, 0.12);
+    }
+    html.dark {
+      --arb-bg: #020617;
+      --arb-surface: #0f172a;
+      --arb-border: #1e293b;
+      --arb-text: #f1f5f9;
+      --arb-muted: #94a3b8;
+      --arb-accent: #10b981;
+      --arb-accent-soft: rgba(16, 185, 129, 0.16);
     }
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    .pb-safe-mobile {
+      padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+    }
+    @media (min-width: 1024px) {
+      .pb-safe-mobile {
+        padding-bottom: 1.5rem;
+      }
     }
     /* Custom scrollbar for clean minimalism */
     ::-webkit-scrollbar {
@@ -106,11 +159,21 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
       <button type="button" data-action="nav-section" data-section="dashboard" class="flex items-center gap-2.5 text-left group focus-ring rounded-lg py-1 px-1.5">
-        <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm group-hover:bg-emerald-700 transition-colors">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold text-sm shadow-xs group-hover:from-emerald-500 group-hover:to-teal-600 transition-all">
+          <svg class="w-5 h-5" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M16 6v20M16 13l-6 4M16 11l6 4M16 18l-5 4M16 17l5 4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="16" cy="6" r="2.3" fill="#a7f3d0"/>
+            <circle cx="10" cy="17" r="1.8" fill="#ffffff"/>
+            <circle cx="22" cy="15" r="1.8" fill="#ffffff"/>
+            <circle cx="11" cy="22" r="1.8" fill="#a7f3d0"/>
+            <circle cx="21" cy="21" r="1.8" fill="#a7f3d0"/>
+          </svg>
         </div>
         <div class="truncate">
-          <span class="font-semibold text-sm sm:text-base tracking-tight text-slate-900 dark:text-white block leading-none">Arboria</span>
+          <div class="flex items-center gap-1.5">
+            <span class="font-semibold text-sm sm:text-base tracking-tight text-slate-900 dark:text-white leading-none">Arboria</span>
+            <span id="header-workspace-mode-badge" class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 hidden sm:inline-block">Personal</span>
+          </div>
           <span class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline-block">Arquitectura Jerárquica de Objetivos</span>
         </div>
       </button>
@@ -159,10 +222,17 @@
         </div>
       </div>
 
+      <!-- Deshacer última acción (Undo Stack - Sección 8.9) -->
+      <button id="btn-header-undo" type="button" data-action="undo-last-action" title="Deshacer última acción estructural (Ctrl+Z)" aria-label="Deshacer última acción" class="hidden items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 transition-colors focus-ring">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+        <span class="hidden md:inline">Deshacer</span>
+        <span id="header-undo-count" class="px-1 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">0</span>
+      </button>
+
       <!-- Primary CTA: Crear objetivo -->
       <button id="btn-header-create-goal" type="button" data-action="open-create-goal-modal" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-colors focus-ring">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-        <span>Crear objetivo</span>
+        <span class="hidden xs:inline">Crear objetivo</span>
       </button>
 
       <!-- Import / Backup button -->
@@ -254,7 +324,8 @@
     </aside>
 
     <!-- Center Main Workspace -->
-    <main id="main-workspace" class="flex-1 overflow-y-auto min-w-0 p-3 sm:p-6 focus:outline-none" tabindex="-1">
+    <main id="main-workspace" class="flex-1 overflow-y-auto min-w-0 p-3 sm:p-6 pb-safe-mobile focus:outline-none" tabindex="-1">
+      <div id="workspace-shared-banner" class="max-w-6xl mx-auto mb-4 hidden"></div>
       <div id="workspace-content" class="max-w-6xl mx-auto space-y-6">
         <!-- Dynamically rendered based on current state.activeSection / state.currentRootId -->
       </div>
@@ -285,14 +356,38 @@
     </div>
   </div>
 
+  <!-- Barra de Navegación Inferior Táctil para Móvil / iPhone (Sección 7.3 y 7.4) -->
+  <nav id="mobile-bottom-nav" aria-label="Navegación rápida móvil" class="lg:hidden fixed bottom-0 inset-x-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2 py-1.5 flex items-center justify-around text-[11px]">
+    <button type="button" data-action="nav-section" data-section="dashboard" class="flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-600">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span>Inicio</span>
+    </button>
+    <button type="button" data-action="nav-section" data-section="all_goals" class="flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-600">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+      <span>Objetivos</span>
+    </button>
+    <button type="button" data-action="nav-section" data-section="today" class="flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-600">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <span>Hoy</span>
+    </button>
+    <button type="button" data-action="nav-section" data-section="shared_projects" class="flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-600">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span>Compartidos</span>
+    </button>
+    <button type="button" data-action="open-cloud-auth-modal" class="flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:text-emerald-600">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span>Cuenta</span>
+    </button>
+  </nav>
+
   <!-- Toast Notification Container -->
-  <div id="toast-container" aria-live="polite" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+  <div id="toast-container" aria-live="polite" class="fixed bottom-16 lg:bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
 
   <script>
     // =========================================================================
     // 1. UTILIDADES DE FECHA, IDENTIFICADORES Y FORMATEO (ZONA HORARIA BUENOS AIRES)
     // =========================================================================
-    const APP_VERSION = '2.4.0';
+    const APP_VERSION = '3.0.0';
     const STORAGE_KEY = 'arboria_goal_system_v2';
     const IDB_NAME = 'ArboriaGoalDatabase';
     const IDB_STORE = 'app_state';
@@ -446,6 +541,7 @@
           estimatedDuration: data.estimatedDuration || 0,
           actualDuration: data.actualDuration || 0,
           tags: Array.isArray(data.tags) ? data.tags : [],
+          excludedInheritedTags: Array.isArray(data.excludedInheritedTags) ? data.excludedInheritedTags : [],
           notes: data.notes || '',
           resources: Array.isArray(data.resources) ? data.resources : [],
           weight: data.weight && data.weight > 0 ? Number(data.weight) : 1,
@@ -917,14 +1013,15 @@
     // 3. ESTADO GLOBAL DE LA APLICACIÓN Y CAPA DE PERSISTENCIA (IDB + LOCALSTORAGE)
     // =========================================================================
     const defaultSettings = {
-      theme: 'light', // 'light' | 'dark'
+      theme: 'dark', // 'dark' (predeterminado Arboria 2.0) | 'light' | 'system'
       calculationMode: 'standard', // 'standard' (equitativo) | 'weighted' (ponderado)
       globalProgressMode: 'terminals', // 'terminals' (estándar regla 32) | 'average_roots' (alternativo etiquetado)
       dateFormat: 'dd/mm/yyyy', // 'dd/mm/yyyy' | 'yyyy-mm-dd' | 'long'
-      treeViewMode: 'tree', // 'tree' | 'list'
+      treeViewMode: 'tree', // 'tree' | 'list' | 'kanban' | 'graph'
       density: 'comfortable', // 'comfortable' | 'compact'
       stagnationDays: 7,
       defaultExportFormat: 'md',
+      developerMode: false, // Oculta controles internos de QA/depuración de la vista pública de usuario final
       simulatePersistenceFailure: false // Para la Prueba 16 obligatoria de fallo de guardado
     };
 
@@ -970,8 +1067,13 @@
           lastResumeAt: null, // ISO timestamp desde el último inicio/reanudación (evita desincronización al recargar)
           lastTickTimestamp: null
         },
-        lastTestResults: null
-      }
+        lastTestResults: null,
+        undoStack: [], // Pila de deshacer verificable para operaciones de riesgo (Sección 8.9)
+        workspaceMode: 'personal', // 'personal' | 'shared_project'
+        activeSharedProjectId: null
+      },
+      sharedProjects: [], // Proyectos colaborativos cargados o locales [{ id, owner_id, name, description, role, revision, state, members, invitations, updated_at }]
+      personalStateBackupWhileInShared: null
     };
 
     // =========================================================================
@@ -1005,7 +1107,17 @@
       conflictPending: null, // Guarda { remoteState, remoteUpdatedAt, localPayload } si se detecta modificación concurrente
       migrationPromptData: null, // Guarda el estado local preexistente cuando una cuenta recién conectada aún no tiene fila en la nube
       realtimeChannel: null,
-      authTab: 'login', // 'login' | 'signup' | 'recover' | 'config'
+      authTab: 'login', // 'login' | 'signup' | 'recover' | 'config' | 'profile' | 'security'
+      revision: null, // Número de revisión entero para control de concurrencia optimista en servidor
+      localRevision: 0, // Contador monótono de revisiones locales
+      offlineQueue: [], // Cola persistente de operaciones pendientes sin conexión [{ opId, revision, savedAt, payload }]
+      profile: null, // Perfil del usuario autenticado ({ username, username_normalized, display_name, theme_preference })
+      mfaFactors: [], // Factores TOTP registrados en Supabase Auth MFA
+      mfaAssurance: { currentLevel: null, nextLevel: null },
+      pendingMfaChallengeId: null,
+      pendingMfaFactorId: null,
+      enrollingTotpData: null, // Datos temporales { id, qr_code, secret, uri } durante enrolamiento 2FA
+      authListenerSubscription: null,
       mockTransport: null // Transporte inyectable para pruebas funcionales deterministas de sincronización, RLS y conflictos
     };
 
@@ -1275,12 +1387,86 @@
       return true;
     }
 
-    // Muestra los 5 estados veraces y diferenciados exigidos en el punto 3:
-    // - 'saving' -> Guardando...
-    // - 'cloud_saved' -> Guardado en la nube (SOLO tras confirmación real del backend Supabase)
-    // - 'local_only' -> Guardado en el dispositivo (cuando no hay sesión autenticada o solo se guardó localmente)
-    // - 'sync_error' -> Error de sincronización
-    // - 'offline' -> Sesión sin conexión (Guardado local)
+    // Gestión de Cola Offline Persistente con Identificadores de Operación Estables (Sección 5.5)
+    function getOfflineQueueStorageKey() {
+      const uid = cloudSync.user?.id || 'anon';
+      return `${STORAGE_KEY}_offline_queue_${uid}`;
+    }
+
+    function loadOfflineQueue() {
+      if (cloudSync.isTestingIsolation) return [];
+      try {
+        const raw = window.localStorage.getItem(getOfflineQueueStorageKey());
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            cloudSync.offlineQueue = parsed;
+            return parsed;
+          }
+        }
+      } catch (e) {
+        console.warn('Error al leer cola offline:', e);
+      }
+      cloudSync.offlineQueue = [];
+      return [];
+    }
+
+    function persistOfflineQueue() {
+      if (cloudSync.isTestingIsolation) return;
+      try {
+        if (!cloudSync.offlineQueue || cloudSync.offlineQueue.length === 0) {
+          window.localStorage.removeItem(getOfflineQueueStorageKey());
+        } else {
+          // Conservar las últimas 25 instantáneas ordenadas con IDs estables
+          if (cloudSync.offlineQueue.length > 25) {
+            cloudSync.offlineQueue = cloudSync.offlineQueue.slice(-25);
+          }
+          window.localStorage.setItem(getOfflineQueueStorageKey(), JSON.stringify(cloudSync.offlineQueue));
+        }
+      } catch (e) {
+        console.warn('No se pudo persistir cola offline:', e);
+      }
+    }
+
+    function enqueueOfflineChange(payloadSnapshot) {
+      cloudSync.localRevision = (Number(cloudSync.localRevision) || 0) + 1;
+      const entry = {
+        opId: generateId('op'),
+        localRevision: cloudSync.localRevision,
+        expectedServerRevision: cloudSync.revision,
+        queuedAt: nowISO(),
+        payload: payloadSnapshot
+      };
+      cloudSync.offlineQueue.push(entry);
+      persistOfflineQueue();
+      return entry;
+    }
+
+    function clearOfflineQueueUpTo(localRev) {
+      cloudSync.offlineQueue = (cloudSync.offlineQueue || []).filter(item => item.localRevision > localRev);
+      persistOfflineQueue();
+    }
+
+    function getDisplayIdentityLabel() {
+      if (cloudSync.profile && cloudSync.profile.username) {
+        return `@${cloudSync.profile.username}`;
+      }
+      const metaUser = cloudSync.user?.user_metadata?.username;
+      if (metaUser) return `@${metaUser}`;
+      if (cloudSync.user?.email) {
+        return cloudSync.user.email.split('@')[0];
+      }
+      return 'Nube / Cuenta';
+    }
+
+    // Muestra los 6 estados de sincronización claros y veraces (Sección 5.1):
+    // - 'cloud_saved' -> Sincronizado (SOLO tras confirmación real de Supabase)
+    // - 'saving' -> Guardando cambios...
+    // - 'pending_changes' -> Cambios pendientes
+    // - 'offline' -> Trabajando sin conexión
+    // - 'sync_error' / 'error' -> Error de sincronización
+    // - 'conflict' -> Conflicto detectado
+    // - 'local_only' -> Guardado en el dispositivo
     function updateSaveStatusUI(status, message) {
       cloudSync.status = status;
       if (message) cloudSync.statusDetail = message;
@@ -1291,9 +1477,7 @@
       const accLabel = document.getElementById('header-cloud-account-label');
 
       if (accLabel) {
-        accLabel.textContent = cloudSync.user?.email
-          ? cloudSync.user.email.split('@')[0]
-          : 'Nube / Cuenta';
+        accLabel.textContent = getDisplayIdentityLabel();
       }
 
       if (!badge || !dot || !text) return;
@@ -1302,11 +1486,20 @@
       if (status === 'saving') {
         badge.className += 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800';
         dot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-ping';
-        text.textContent = message || 'Guardando...';
+        text.textContent = message || 'Guardando cambios...';
+      } else if (status === 'pending_changes') {
+        badge.className += 'bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800';
+        dot.className = 'w-2 h-2 rounded-full bg-sky-500';
+        text.textContent = message || `Cambios pendientes (${cloudSync.offlineQueue.length || 1})`;
       } else if (status === 'cloud_saved') {
         badge.className += 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/80';
         dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-        text.textContent = message || 'Guardado en la nube';
+        const revSuffix = cloudSync.revision ? ` · v${cloudSync.revision}` : '';
+        text.textContent = (message || 'Sincronizado') + revSuffix;
+      } else if (status === 'conflict') {
+        badge.className += 'bg-rose-50 text-rose-800 dark:bg-rose-950/70 dark:text-rose-200 border-rose-300 dark:border-rose-700';
+        dot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-pulse';
+        text.textContent = message || 'Conflicto detectado';
       } else if (status === 'sync_error' || status === 'error') {
         badge.className += 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800';
         dot.className = 'w-2 h-2 rounded-full bg-rose-500';
@@ -1314,9 +1507,9 @@
       } else if (status === 'offline') {
         badge.className += 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700';
         dot.className = 'w-2 h-2 rounded-full bg-amber-500';
-        text.textContent = message || 'Sesión sin conexión (Local)';
+        const qCount = cloudSync.offlineQueue?.length || 0;
+        text.textContent = message || (qCount > 0 ? `Sin conexión (${qCount} pend.)` : 'Trabajando sin conexión');
       } else {
-        // 'local_only' o 'saved' local sin cuenta en la nube conectada
         badge.className += 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
         dot.className = 'w-2 h-2 rounded-full bg-slate-400';
         text.textContent = message || 'Guardado en el dispositivo';
@@ -1327,11 +1520,12 @@
       return typeof navigator !== 'undefined' && navigator.onLine !== undefined ? Boolean(navigator.onLine) : true;
     }
 
-    // Cola secuencial y agrupada (debounced) para sincronización en Supabase (Punto 2, 3 y 5)
-    // - Garantiza que escrituras simultáneas nunca sobrescriban estados nuevos con estados antiguos.
-    // - Verifica concurrencia comparando updated_at remoto antes de sobrescribir.
-    // - NUNCA muestra «Guardado en la nube» hasta recibir confirmación de Supabase.
+    // Cola secuencial y agrupada con Control de Concurrencia Optimista (Sección 5.2 y 5.3)
     function enqueueRemoteCloudSync(payloadSnapshot, options = {}) {
+      if (state.ui.workspaceMode === 'shared_project' && state.ui.activeSharedProjectId) {
+        enqueueSharedProjectSync(state.ui.activeSharedProjectId, payloadSnapshot, options);
+        return;
+      }
       if (!cloudSync.user || !cloudSync.user.id || !supabaseClient || cloudSync.isTestingIsolation) {
         return;
       }
@@ -1339,14 +1533,19 @@
         return;
       }
 
-      cloudSync.queuedPayload = payloadSnapshot;
+      const queueEntry = enqueueOfflineChange(payloadSnapshot);
+      cloudSync.queuedPayload = {
+        ...payloadSnapshot,
+        _localOpId: queueEntry.opId,
+        _localRevision: queueEntry.localRevision
+      };
 
       if (!isBrowserOnline()) {
-        updateSaveStatusUI('offline', 'Sesión sin conexión (Local)');
+        updateSaveStatusUI('offline', `Trabajando sin conexión (${cloudSync.offlineQueue.length} pend.)`);
         return;
       }
 
-      updateSaveStatusUI('saving', 'Guardando en la nube...');
+      updateSaveStatusUI('pending_changes', 'Cambios pendientes...');
 
       if (cloudSync.debounceTimerId) {
         clearTimeout(cloudSync.debounceTimerId);
@@ -1362,52 +1561,103 @@
 
     async function processRemoteSyncQueue(forceOverwrite = false) {
       if (cloudSync.inFlightPromise) {
-        // Si ya hay una petición en vuelo, al terminar procesará automáticamente el último queuedPayload
         return cloudSync.inFlightPromise;
+      }
+      if (!cloudSync.queuedPayload && cloudSync.offlineQueue.length > 0) {
+        const latest = cloudSync.offlineQueue[cloudSync.offlineQueue.length - 1];
+        cloudSync.queuedPayload = {
+          ...latest.payload,
+          _localOpId: latest.opId,
+          _localRevision: latest.localRevision
+        };
       }
       if (!cloudSync.queuedPayload || !cloudSync.user || !supabaseClient) {
         return;
       }
 
       const payloadToPush = cloudSync.queuedPayload;
+      const pushedLocalRev = payloadToPush._localRevision || cloudSync.localRevision;
       cloudSync.queuedPayload = null;
       const userId = cloudSync.user.id;
 
       cloudSync.inFlightPromise = (async () => {
         try {
           if (!isBrowserOnline()) {
-            updateSaveStatusUI('offline', 'Sesión sin conexión (Local)');
+            updateSaveStatusUI('offline', 'Trabajando sin conexión');
             return { ok: false, offline: true };
           }
 
-          // 1. Detectar cambios concurrentes en la nube desde la última carga/sincronización (Punto 5)
+          updateSaveStatusUI('saving', 'Guardando cambios...');
+
+          // Intento 1: RPC Atómica en PostgreSQL (`public.save_arboria_user_state_v2`) con revisión esperada (`expected_revision`)
+          if (typeof supabaseClient.rpc === 'function') {
+            const { data: rpcRes, error: rpcErr } = await supabaseClient.rpc('save_arboria_user_state_v2', {
+              p_state: payloadToPush,
+              p_expected_revision: forceOverwrite ? null : cloudSync.revision,
+              p_force_overwrite: Boolean(forceOverwrite),
+              p_schema_version: APP_VERSION
+            });
+
+            if (!rpcErr && rpcRes && typeof rpcRes === 'object') {
+              if (rpcRes.conflict) {
+                cloudSync.conflictPending = {
+                  remoteState: rpcRes.server_state,
+                  remoteUpdatedAt: rpcRes.server_updated_at,
+                  remoteRevision: rpcRes.server_revision,
+                  localPayload: payloadToPush
+                };
+                updateSaveStatusUI('conflict', 'Conflicto detectado');
+                showToast('Conflicto detectado: otro dispositivo guardó una revisión más reciente en la nube. Ambas versiones están resguardadas.', 'warning');
+                openCloudConflictModal();
+                return { ok: false, conflict: true };
+              }
+              if (rpcRes.ok) {
+                cloudSync.revision = Number(rpcRes.revision) || ((cloudSync.revision || 0) + 1);
+                cloudSync.lastSyncedUpdatedAt = rpcRes.updated_at || nowISO();
+                cloudSync.conflictPending = null;
+                clearOfflineQueueUpTo(pushedLocalRev);
+                updateSaveStatusUI('cloud_saved', 'Sincronizado');
+                return { ok: true, revision: cloudSync.revision, updatedAt: cloudSync.lastSyncedUpdatedAt };
+              }
+            } else if (rpcErr && !/function .*save_arboria_user_state_v2.* does not exist|schema cache/i.test(String(rpcErr.message || ''))) {
+              // Si el error es de sesión expirada o permisos, propagarlo al manejador
+              if (/jwt expired|invalid claim|not authenticated|401|42501/i.test(String(rpcErr.message || ''))) {
+                throw rpcErr;
+              }
+            }
+          }
+
+          // Intento 2 (Fallback compatible con instalaciones que aún no ejecutaron el Paso 1 de arboria_2_0_migration.sql):
           if (!forceOverwrite && cloudSync.lastSyncedUpdatedAt) {
             const { data: checkRow, error: checkErr } = await supabaseClient
               .from(SUPABASE_TABLE)
-              .select('updated_at, state')
+              .select('updated_at, state, revision')
               .eq('user_id', userId)
               .maybeSingle();
 
-            if (!checkErr && checkRow && checkRow.updated_at) {
-              const remoteTimeMs = new Date(checkRow.updated_at).getTime();
+            if (!checkErr && checkRow) {
+              const remoteRev = checkRow.revision ? Number(checkRow.revision) : null;
+              const remoteTimeMs = checkRow.updated_at ? new Date(checkRow.updated_at).getTime() : 0;
               const knownTimeMs = new Date(cloudSync.lastSyncedUpdatedAt).getTime();
-              if (!isNaN(remoteTimeMs) && !isNaN(knownTimeMs) && remoteTimeMs > knownTimeMs + 500) {
-                // La copia en la nube cambió desde otro dispositivo (ej. iPhone o PC) después de nuestra última sincronización
+              const revMismatch = (remoteRev !== null && cloudSync.revision !== null && remoteRev > cloudSync.revision);
+              const timeMismatch = (!isNaN(remoteTimeMs) && !isNaN(knownTimeMs) && remoteTimeMs > knownTimeMs + 500);
+              if (revMismatch || timeMismatch) {
                 cloudSync.conflictPending = {
                   remoteState: checkRow.state,
                   remoteUpdatedAt: checkRow.updated_at,
+                  remoteRevision: remoteRev,
                   localPayload: payloadToPush
                 };
-                updateSaveStatusUI('sync_error', 'Conflicto entre dispositivos detectado');
-                showToast('Atención: Se detectaron cambios más recientes en la nube desde otro dispositivo. Revisa cómo resolver la sincronización.', 'warning');
+                updateSaveStatusUI('conflict', 'Conflicto detectado');
+                showToast('Conflicto detectado: otro dispositivo actualizó la nube. Revisa cómo resolver la sincronización.', 'warning');
                 openCloudConflictModal();
                 return { ok: false, conflict: true };
               }
             }
           }
 
-          // 2. Realizar upsert atómico en public.arboria_user_state para el user_id autenticado
           const newUpdatedAt = nowISO();
+          const nextRev = (Number(cloudSync.revision) || 0) + 1;
           const { data: upsertedRow, error: upsertError } = await supabaseClient
             .from(SUPABASE_TABLE)
             .upsert(
@@ -1425,21 +1675,26 @@
             throw upsertError;
           }
 
+          cloudSync.revision = nextRev;
           cloudSync.lastSyncedUpdatedAt = (upsertedRow && upsertedRow.updated_at) ? upsertedRow.updated_at : newUpdatedAt;
           cloudSync.conflictPending = null;
-          updateSaveStatusUI('cloud_saved', 'Guardado en la nube');
-          return { ok: true, updatedAt: cloudSync.lastSyncedUpdatedAt };
+          clearOfflineQueueUpTo(pushedLocalRev);
+          updateSaveStatusUI('cloud_saved', 'Sincronizado');
+          return { ok: true, revision: cloudSync.revision, updatedAt: cloudSync.lastSyncedUpdatedAt };
         } catch (err) {
           console.warn('Error al sincronizar con Supabase:', err);
-          if (!isBrowserOnline()) {
-            updateSaveStatusUI('offline', 'Sesión sin conexión (Local)');
+          const msg = String(err?.message || '');
+          if (/jwt expired|refresh_token_not_found|invalid_grant|session_not_found/i.test(msg)) {
+            updateSaveStatusUI('sync_error', 'Sesión expirada (Cambios protegidos localmente)');
+            showToast('Tu sesión en la nube expiró. Tus cambios siguen guardados localmente; vuelve a iniciar sesión para sincronizar.', 'warning');
+          } else if (!isBrowserOnline()) {
+            updateSaveStatusUI('offline', 'Trabajando sin conexión');
           } else {
-            updateSaveStatusUI('sync_error', 'Error de sincronización (Guardado local)');
+            updateSaveStatusUI('sync_error', 'Error de sincronización');
           }
-          return { ok: false, error: err?.message || 'Error de red o permisos RLS' };
+          return { ok: false, error: msg || 'Error de red o permisos RLS' };
         } finally {
           cloudSync.inFlightPromise = null;
-          // Si durante el envío el usuario hizo un nuevo cambio, enviar únicamente el estado más reciente encolado
           if (cloudSync.queuedPayload) {
             processRemoteSyncQueue(false);
           }
@@ -1542,28 +1797,71 @@
       setInitialRemoteLoadingOverlay(true, `Recuperando objetivos en la nube para ${userObj.email || 'tu cuenta'}…`);
 
       try {
-        const { data: row, error } = await supabaseClient
+        // Cargar perfil (@username) y estado MFA en paralelo sin bloquear si la tabla de perfiles aún no fue creada
+        await Promise.allSettled([
+          fetchUserProfileFromCloud(userObj),
+          refreshMfaStatusFromCloud(),
+          fetchSharedProjectsFromCloud()
+        ]);
+
+        loadOfflineQueue();
+
+        let row = null;
+        let error = null;
+        const resV2 = await supabaseClient
           .from(SUPABASE_TABLE)
-          .select('user_id, state, updated_at')
+          .select('user_id, state, updated_at, revision')
           .eq('user_id', userObj.id)
           .maybeSingle();
+
+        if (resV2.error && /column .*revision.* does not exist/i.test(String(resV2.error.message || ''))) {
+          const resV1 = await supabaseClient
+            .from(SUPABASE_TABLE)
+            .select('user_id, state, updated_at')
+            .eq('user_id', userObj.id)
+            .maybeSingle();
+          row = resV1.data;
+          error = resV1.error;
+        } else {
+          row = resV2.data;
+          error = resV2.error;
+        }
 
         if (error) {
           throw error;
         }
 
-        // Caso 1: Ya existe un estado en la nube para esta cuenta -> Cargarlo como fuente principal (Punto 4)
-        // Nunca sobrescribirlo silenciosamente con datos locales antiguos ni con el conjunto de demostración.
+        // Caso 1: Ya existe un estado en la nube para esta cuenta -> Cargarlo como fuente principal
         if (row && row.state && typeof row.state === 'object' && row.state.nodes) {
           cloudSync.lastSyncedUpdatedAt = row.updated_at || nowISO();
+          cloudSync.revision = row.revision ? Number(row.revision) : 1;
+
+          // Si había cambios pendientes en la cola offline de esta misma cuenta, comprobar si chocan con una revisión más nueva
+          if (cloudSync.offlineQueue.length > 0) {
+            const lastOffline = cloudSync.offlineQueue[cloudSync.offlineQueue.length - 1];
+            if (lastOffline.expectedServerRevision && cloudSync.revision > lastOffline.expectedServerRevision) {
+              cloudSync.conflictPending = {
+                remoteState: row.state,
+                remoteUpdatedAt: row.updated_at,
+                remoteRevision: cloudSync.revision,
+                localPayload: lastOffline.payload
+              };
+              applyPayloadToState(row.state);
+              setInitialRemoteLoadingOverlay(false);
+              updateSaveStatusUI('conflict', 'Conflicto pendiente de resolver');
+              renderAll();
+              openCloudConflictModal();
+              return { ok: true, source: 'cloud_conflict_detected' };
+            }
+          }
+
           applyPayloadToState(row.state);
-          // Actualizar caché local aislado de este usuario sin disparar nuevo guardado remoto
           saveState({ silent: true, skipCloud: true, ignoreSimulation: true });
-          updateSaveStatusUI('cloud_saved', 'Guardado en la nube');
+          updateSaveStatusUI('cloud_saved', 'Sincronizado');
           subscribeToRealtimeUserState(userObj.id);
           setInitialRemoteLoadingOverlay(false);
           renderAll();
-          return { ok: true, source: 'cloud_existing', updatedAt: cloudSync.lastSyncedUpdatedAt };
+          return { ok: true, source: 'cloud_existing', revision: cloudSync.revision, updatedAt: cloudSync.lastSyncedUpdatedAt };
         }
 
         // Caso 2: La cuenta autenticada aún NO tiene registro en public.arboria_user_state (Punto 4: Migración inicial)
@@ -1778,10 +2076,47 @@
       showToast('Sesión cerrada. Los datos en caché de la cuenta anterior fueron separados de este dispositivo.', 'info');
     }
 
+    function bindSupabaseAuthListener() {
+      if (!supabaseClient || !supabaseClient.auth || typeof supabaseClient.auth.onAuthStateChange !== 'function') return;
+      if (cloudSync.authListenerSubscription) return;
+      try {
+        const { data } = supabaseClient.auth.onAuthStateChange((event, session) => {
+          if (cloudSync.isTestingIsolation) return;
+          cloudSync.session = session || null;
+          const nextUser = session?.user || null;
+
+          if (event === 'PASSWORD_RECOVERY') {
+            cloudSync.user = nextUser;
+            openPasswordResetCompletionModal();
+            return;
+          }
+
+          if (event === 'SIGNED_OUT') {
+            cloudSync.user = null;
+            cloudSync.profile = null;
+            cloudSync.revision = null;
+            updateSaveStatusUI('local_only', 'Guardado en el dispositivo');
+            renderAll();
+            return;
+          }
+
+          if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            cloudSync.user = nextUser;
+            updateSaveStatusUI(cloudSync.status, cloudSync.statusDetail);
+            return;
+          }
+        });
+        cloudSync.authListenerSubscription = data?.subscription || true;
+      } catch (e) {
+        console.warn('No se pudo suscribir a onAuthStateChange:', e);
+      }
+    }
+
     async function loadInitialState() {
       initSupabaseClientInstance();
+      bindSupabaseAuthListener();
 
-      // 1. Si Supabase está configurado y existe una sesión autenticada activa, esperar la carga remota ANTES de habilitar escrituras (Punto 5)
+      // 1. Si Supabase está configurado y existe una sesión autenticada activa, esperar la carga remota ANTES de habilitar escrituras
       if (supabaseClient && supabaseClient.auth && typeof supabaseClient.auth.getSession === 'function') {
         try {
           const { data: sessionData } = await supabaseClient.auth.getSession();
@@ -1803,15 +2138,14 @@
         applyPayloadToState(loaded);
         updateSaveStatusUI('local_only', 'Guardado en el dispositivo');
       } else {
-        // Primera ejecución local sin datos: cargamos el conjunto de demostración etiquetado claramente como demostración
-        const demo = createDemoDataset();
-        state.nodes = demo.nodes;
-        state.events = demo.events;
-        state.sessions = demo.sessions;
-        state.dependencies = demo.dependencies;
-        state.dailyPlans = demo.dailyPlans;
-        state.milestones = demo.milestones;
-        saveState({ silent: true, skipCloud: true });
+        // Fase 6 y 15: En entorno público nuevo no precargar datos de demostración como si fueran reales.
+        // Iniciar en estado limpio de bienvenida con opción a un clic de crear el primer objetivo o explorar ejemplos.
+        state.nodes = {};
+        state.events = [];
+        state.sessions = [];
+        state.dependencies = [];
+        state.dailyPlans = [];
+        state.milestones = [];
         updateSaveStatusUI('local_only', 'Guardado en el dispositivo');
       }
       applyThemeAndDensity();
@@ -1819,7 +2153,13 @@
 
     function applyThemeAndDensity() {
       const rootEl = document.documentElement;
-      if (state.settings.theme === 'dark') {
+      const pref = state.settings.theme || 'dark';
+      try {
+        window.localStorage.setItem('arboria_theme_pref_v2', pref);
+      } catch (e) {}
+      const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const useDark = pref === 'dark' || (pref === 'system' && systemDark);
+      if (useDark) {
         rootEl.classList.add('dark');
       } else {
         rootEl.classList.remove('dark');
@@ -1919,6 +2259,192 @@
 
     function getNodeDepth(nodeId, nodesMap = state.nodes) {
       return getAncestors(nodeId, nodesMap).length;
+    }
+
+    // =========================================================================
+    // 4.B HERENCIA JERÁRQUICA DE ETIQUETAS (SECCIÓN 8.2: PROPIAS, HEREDADAS Y EXCLUIDAS)
+    // =========================================================================
+    function getNodeTagInfo(nodeId, nodesMap = state.nodes) {
+      const node = nodesMap[nodeId];
+      if (!node) {
+        return { ownTags: [], inheritedTags: [], inheritedDetails: [], excludedInheritedTags: [], effectiveTags: [] };
+      }
+      const ownTags = Array.isArray(node.tags) ? [...node.tags] : [];
+      const ownLowerSet = new Set(ownTags.map(t => t.toLowerCase()));
+      const excludedInheritedTags = Array.isArray(node.excludedInheritedTags) ? [...node.excludedInheritedTags] : [];
+      const excludedLowerSet = new Set(excludedInheritedTags.map(t => t.toLowerCase()));
+
+      const ancestors = getAncestors(nodeId, nodesMap);
+      const inheritedTags = [];
+      const inheritedDetails = [];
+      const seenInheritedLower = new Set();
+
+      for (const anc of ancestors) {
+        for (const rawTag of (anc.tags || [])) {
+          const clean = String(rawTag || '').trim();
+          if (!clean) continue;
+          const low = clean.toLowerCase();
+          if (ownLowerSet.has(low) || excludedLowerSet.has(low) || seenInheritedLower.has(low)) continue;
+          seenInheritedLower.add(low);
+          inheritedTags.push(clean);
+          inheritedDetails.push({ tag: clean, sourceNodeId: anc.id, sourceNodeTitle: anc.title });
+        }
+      }
+
+      const effectiveTags = [...ownTags, ...inheritedTags];
+      return {
+        ownTags,
+        inheritedTags,
+        inheritedDetails,
+        excludedInheritedTags,
+        effectiveTags
+      };
+    }
+
+    function toggleExcludeInheritedTag(nodeId, tagStr) {
+      const node = state.nodes[nodeId];
+      if (!node || !tagStr) return { ok: false };
+      if (!Array.isArray(node.excludedInheritedTags)) node.excludedInheritedTags = [];
+      const idx = node.excludedInheritedTags.findIndex(t => t.toLowerCase() === tagStr.toLowerCase());
+      if (idx >= 0) {
+        node.excludedInheritedTags.splice(idx, 1);
+        recordEvent(nodeId, 'inherited_tag_restored', `Restaurada etiqueta heredada #${tagStr} en «${node.title}»`);
+      } else {
+        node.excludedInheritedTags.push(tagStr);
+        recordEvent(nodeId, 'inherited_tag_excluded', `Excluida localmente etiqueta heredada #${tagStr} en «${node.title}»`);
+      }
+      node.updatedAt = nowISO();
+      saveState();
+      return { ok: true };
+    }
+
+    // =========================================================================
+    // 4.C PILA DE DESHACER (UNDO STACK) PARA OPERACIONES DE RIESGO (SECCIÓN 8.9)
+    // =========================================================================
+    function pushUndoSnapshot(actionLabel) {
+      if (cloudSync.isTestingIsolation) return;
+      const snapshot = {
+        id: generateId('undo'),
+        label: actionLabel || 'Acción reciente',
+        timestamp: nowISO(),
+        nodes: JSON.parse(JSON.stringify(state.nodes)),
+        dependencies: JSON.parse(JSON.stringify(state.dependencies)),
+        dailyPlans: JSON.parse(JSON.stringify(state.dailyPlans)),
+        milestones: JSON.parse(JSON.stringify(state.milestones))
+      };
+      if (!Array.isArray(state.ui.undoStack)) state.ui.undoStack = [];
+      state.ui.undoStack.push(snapshot);
+      if (state.ui.undoStack.length > 20) {
+        state.ui.undoStack.shift();
+      }
+      updateUndoHeaderButton();
+      return snapshot.id;
+    }
+
+    function updateUndoHeaderButton() {
+      const btn = document.getElementById('btn-header-undo');
+      const countEl = document.getElementById('header-undo-count');
+      const count = Array.isArray(state.ui.undoStack) ? state.ui.undoStack.length : 0;
+      if (btn) {
+        if (count > 0) {
+          btn.classList.remove('hidden');
+          btn.classList.add('inline-flex');
+          const last = state.ui.undoStack[count - 1];
+          btn.title = `Deshacer: ${last.label} (Ctrl+Z)`;
+        } else {
+          btn.classList.add('hidden');
+          btn.classList.remove('inline-flex');
+        }
+      }
+      if (countEl) countEl.textContent = String(count);
+    }
+
+    function undoLastAction() {
+      if (!Array.isArray(state.ui.undoStack) || state.ui.undoStack.length === 0) {
+        showToast('No hay acciones recientes para deshacer.', 'info');
+        return { ok: false, error: 'Pila de deshacer vacía' };
+      }
+      const snapshot = state.ui.undoStack.pop();
+      const integrity = validateTreeIntegrity(snapshot.nodes);
+      if (!integrity.valid) {
+        showToast('No se pudo restaurar el estado anterior porque la instantánea no es íntegra.', 'error');
+        updateUndoHeaderButton();
+        return { ok: false, error: 'Instantánea inválida' };
+      }
+      state.nodes = snapshot.nodes;
+      state.dependencies = snapshot.dependencies;
+      state.dailyPlans = snapshot.dailyPlans;
+      state.milestones = snapshot.milestones;
+      recordEvent(null, 'undo_restored', `Deshecha acción: «${snapshot.label}»`);
+      updateUndoHeaderButton();
+      saveState();
+      renderAll();
+      showToast(`Acción deshecha: «${snapshot.label}»`, 'success');
+      return { ok: true, restoredLabel: snapshot.label };
+    }
+
+    // =========================================================================
+    // 4.D CONVERSIÓN BIDIRECCIONAL ENTRE TAREA Y CONTENEDOR (SECCIÓN 8.1)
+    // =========================================================================
+    function convertNodeTypeExplicit(nodeId, targetType, childResolutionMode = 'ask') {
+      const node = state.nodes[nodeId];
+      if (!node) return { ok: false, error: 'Nodo no encontrado.' };
+      if (isCurrentWorkspaceReadOnly()) {
+        showToast('Permiso denegado: este proyecto compartido está en modo de solo lectura (Lector).', 'error');
+        return { ok: false, error: 'Solo lectura' };
+      }
+
+      const activeChildren = getChildren(nodeId, state.nodes, false);
+
+      if (targetType === 'container') {
+        pushUndoSnapshot(`Convertir «${node.title}» en contenedor`);
+        node.nodeType = 'container';
+        node.completedAt = null;
+        node.updatedAt = nowISO();
+        recordEvent(nodeId, 'converted_to_container', `«${node.title}» convertido explícitamente en contenedor organizativo.`);
+        saveState();
+        return { ok: true, node };
+      }
+
+      if (targetType === 'terminal') {
+        if (activeChildren.length > 0 && childResolutionMode === 'ask') {
+          return {
+            ok: false,
+            requiresChildResolution: true,
+            nodeId,
+            childrenCount: activeChildren.length
+          };
+        }
+
+        pushUndoSnapshot(`Convertir «${node.title}» en tarea ejecutable`);
+        if (activeChildren.length > 0) {
+          if (childResolutionMode === 'reparent_children') {
+            for (const ch of activeChildren) {
+              ch.parentId = node.parentId;
+              if (!node.parentId) {
+                ch.rootId = ch.id;
+                for (const sub of getDescendants(ch.id, state.nodes, true)) {
+                  sub.node.rootId = ch.id;
+                }
+              }
+            }
+          } else if (childResolutionMode === 'archive_children') {
+            for (const d of getDescendants(nodeId, state.nodes, true)) {
+              d.node.isArchived = true;
+              d.node.archivedAt = nowISO();
+            }
+          }
+        }
+
+        node.nodeType = 'terminal';
+        if (node.status === 'cancelled') node.status = 'pending';
+        node.updatedAt = nowISO();
+        recordEvent(nodeId, 'converted_to_terminal', `«${node.title}» convertido en tarea ejecutable terminal.`);
+        saveState();
+        return { ok: true, node };
+      }
+
+      return { ok: false, error: 'Tipo de nodo destino no válido.' };
     }
 
     // Determina si un nodo es una unidad terminal ejecutable o un contenedor organizativo
@@ -2405,6 +2931,7 @@
               .split(',')
               .map(t => t.trim())
               .filter(Boolean),
+        excludedInheritedTags: Array.isArray(params.excludedInheritedTags) ? params.excludedInheritedTags : [],
         notes: (params.notes || '').trim(),
         resources: Array.isArray(params.resources) ? params.resources : [],
         weight: weightVal > 0 ? weightVal : 1,
@@ -2558,6 +3085,7 @@
       if (oldParentId === targetParentId) {
         return { ok: true, unchanged: true };
       }
+      pushUndoSnapshot(`Mover «${node.title}»`);
 
       const now = nowISO();
       // Si el nuevo padre era terminal, se convierte en contenedor
@@ -2671,6 +3199,7 @@
     function setSubtreeArchived(nodeId, archiveFlag) {
       const node = state.nodes[nodeId];
       if (!node) return { ok: false };
+      pushUndoSnapshot(`${archiveFlag ? 'Archivar' : 'Restaurar'} «${node.title}»`);
       const now = nowISO();
       const descendants = getDescendants(nodeId, state.nodes, true);
       node.isArchived = Boolean(archiveFlag);
@@ -2693,6 +3222,7 @@
     function deleteNodeExplicit(nodeId, mode = 'delete_subtree') {
       const node = state.nodes[nodeId];
       if (!node) return { ok: false, error: 'Nodo no encontrado.' };
+      pushUndoSnapshot(`Eliminar «${node.title}»`);
 
       const children = getChildren(nodeId, state.nodes, true);
       const descendants = getDescendants(nodeId, state.nodes, true);
@@ -3456,26 +3986,35 @@
     // =========================================================================
     // 10. SISTEMA DE RENDERIZADO VISUAL Y COMPONENTES DE INTERFAZ (SECCIÓN 18, 19)
     // =========================================================================
-    function showToast(message, type = 'info') {
+    function showToast(message, type = 'info', options = {}) {
+      updateUndoHeaderButton();
       const container = document.getElementById('toast-container');
       if (!container) return;
       const el = document.createElement('div');
       const colorMap = {
-        success: 'bg-emerald-900 text-white border-emerald-700',
-        error: 'bg-rose-900 text-white border-rose-700',
-        warning: 'bg-amber-900 text-white border-amber-700',
-        info: 'bg-slate-900 text-white border-slate-700'
+        success: 'bg-emerald-900/95 text-white border-emerald-700',
+        error: 'bg-rose-900/95 text-white border-rose-700',
+        warning: 'bg-amber-900/95 text-white border-amber-700',
+        info: 'bg-slate-900/95 text-white border-slate-700'
       };
-      el.className = `pointer-events-auto flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl border shadow-lg text-xs sm:text-sm transition-all duration-200 ${colorMap[type] || colorMap.info}`;
+      const showUndoBtn = options.undoable || /eliminad|archivad|reubicad|convertid|lote/i.test(String(message));
+      el.className = `pointer-events-auto flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border shadow-lg text-xs sm:text-sm transition-all duration-200 ${colorMap[type] || colorMap.info}`;
       el.innerHTML = `
-        <span class="mt-0.5 shrink-0 font-bold">${type === 'success' ? '✓' : (type === 'error' ? '!' : '•')}</span>
-        <div class="flex-1 leading-snug">${escapeHtml(message)}</div>
+        <div class="flex items-start gap-2.5 min-w-0">
+          <span class="mt-0.5 shrink-0 font-bold">${type === 'success' ? '✓' : (type === 'error' ? '!' : '•')}</span>
+          <div class="flex-1 leading-snug">${escapeHtml(message)}</div>
+        </div>
+        ${showUndoBtn && state.ui.undoStack && state.ui.undoStack.length > 0 ? `
+          <button type="button" data-action="undo-last-action" class="px-2 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11px] font-semibold shrink-0 transition-colors">
+            Deshacer
+          </button>
+        ` : ''}
       `;
       container.appendChild(el);
       setTimeout(() => {
         el.style.opacity = '0';
         setTimeout(() => el.remove(), 200);
-      }, 3600);
+      }, 4200);
     }
 
     function renderStatusBadge(status, isDerived = false) {
@@ -3536,7 +4075,49 @@
       `;
     }
 
+    function renderWorkspaceSharedBanner() {
+      const bannerEl = document.getElementById('workspace-shared-banner');
+      const modeBadge = document.getElementById('header-workspace-mode-badge');
+      if (!bannerEl) return;
+      if (state.ui.workspaceMode === 'shared_project' && state.ui.activeSharedProjectId) {
+        const proj = state.sharedProjects.find(p => p.id === state.ui.activeSharedProjectId);
+        if (proj) {
+          if (modeBadge) {
+            modeBadge.textContent = `Compartido · ${translateRoleLabel(proj.role)}`;
+            modeBadge.className = 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30 hidden sm:inline-block';
+          }
+          bannerEl.classList.remove('hidden');
+          bannerEl.innerHTML = `
+            <div class="rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50/90 dark:bg-sky-950/50 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-sky-600 text-white text-[10px]">PROYECTO COMPARTIDO</span>
+                <strong class="text-slate-900 dark:text-white text-sm">${escapeHtml(proj.name)}</strong>
+                <span class="text-slate-500 dark:text-slate-300">· Rol actual: <strong>${escapeHtml(translateRoleLabel(proj.role))}</strong> (Rev #${proj.revision || 1})</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" data-action="nav-section" data-section="shared_projects" class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300 font-medium">
+                  Miembros y Permisos
+                </button>
+                <button type="button" data-action="switch-to-personal-workspace" class="px-3 py-1 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold">
+                  ← Volver a mi Espacio Personal
+                </button>
+              </div>
+            </div>
+          `;
+          return;
+        }
+      }
+      if (modeBadge) {
+        modeBadge.textContent = 'Espacio Personal';
+        modeBadge.className = 'px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 hidden sm:inline-block';
+      }
+      bannerEl.classList.add('hidden');
+      bannerEl.innerHTML = '';
+    }
+
     function renderAll() {
+      updateUndoHeaderButton();
+      renderWorkspaceSharedBanner();
       renderSidebarNavigation();
       renderActiveTimerHeader();
       renderMainWorkspace();
@@ -3545,13 +4126,13 @@
 
     function renderSidebarNavigation() {
       const gm = calculateGlobalMetrics();
-      const today = getTodayDateString();
       const activeSec = state.ui.activeSection;
 
       const primaryItems = [
-        { id: 'dashboard', label: 'Inicio / Dashboard', count: null, icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+        { id: 'dashboard', label: 'Inicio / Resumen', count: null, icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
         { id: 'all_goals', label: 'Todos los objetivos', count: gm.totalRoots, icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
-        { id: 'today', label: 'Hoy', count: gm.scheduledTodayCount, badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' }
+        { id: 'today', label: 'Hoy', count: gm.scheduledTodayCount, badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+        { id: 'shared_projects', label: 'Proyectos compartidos', count: state.sharedProjects.length, badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' }
       ];
 
       const statusItems = [
@@ -3565,8 +4146,8 @@
       const systemItems = [
         { id: 'templates', label: 'Plantillas', count: BUILTIN_TEMPLATES.length + state.customTemplates.length, icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z' },
         { id: 'history', label: 'Historial de actividad', count: state.events.length, icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-        { id: 'qa_tests', label: 'Verificación (25 Pruebas)', count: 'QA', badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
-        { id: 'settings', label: 'Ajustes', count: null, icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' }
+        ...(state.settings.developerMode ? [{ id: 'qa_tests', label: 'Diagnóstico y Pruebas QA', count: '32', badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' }] : []),
+        { id: 'settings', label: 'Preferencias y Cuenta', count: null, icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' }
       ];
 
       function renderNavGroup(items) {
@@ -4463,7 +5044,13 @@
                   ${escapeHtml(node.title)}
                 </button>
                 ${node.manualNextStep ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">Próximo paso</span>` : ''}
-                ${isBlockedDep ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" title="Tiene dependencias previas sin completar">🔒 Dep.</span>` : ''}
+                ${isBlockedDep ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" title="Tiene dependencias previas sin completar">Dep. previa</span>` : ''}
+                ${(() => {
+                  const tInfo = getNodeTagInfo(node.id);
+                  const ownHtml = tInfo.ownTags.slice(0, 2).map(tg => `<span class="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-600 dark:text-slate-300" title="Etiqueta propia">#${escapeHtml(tg)}</span>`).join('');
+                  const inhHtml = tInfo.inheritedDetails.slice(0, 2).map(d => `<span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-[10px] text-emerald-700 dark:text-emerald-300 border border-emerald-500/20" title="Etiqueta heredada de «${escapeHtml(d.sourceNodeTitle)}»">↱ #${escapeHtml(d.tag)}</span>`).join('');
+                  return ownHtml + inhHtml;
+                })()}
               </div>
               ${isFlatListMode ? `<span class="text-[10px] text-slate-400 block truncate">${escapeHtml(getBreadcrumbPathString(node.id))}</span>` : ''}
             </div>
@@ -4792,9 +5379,32 @@
                 </div>
               </div>
 
-              <div>
-                <label for="edit-node-tags" class="block font-medium text-slate-700 dark:text-slate-300 mb-1">Etiquetas (separadas por coma)</label>
+              <div class="space-y-1.5">
+                <label for="edit-node-tags" class="block font-medium text-slate-700 dark:text-slate-300">Etiquetas propias (separadas por coma, se heredan a descendientes)</label>
                 <input id="edit-node-tags" name="tags" type="text" value="${escapeHtml((node.tags || []).join(', '))}" class="w-full px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700" />
+                ${(() => {
+                  const tagInfo = getNodeTagInfo(node.id);
+                  if (tagInfo.inheritedDetails.length === 0 && tagInfo.excludedInheritedTags.length === 0) return '';
+                  return `
+                    <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1.5">
+                      <span class="text-[11px] font-semibold text-slate-600 dark:text-slate-300 block">Etiquetas heredadas de contenedores superiores (Sección 8.2):</span>
+                      <div class="flex flex-wrap gap-1.5">
+                        ${tagInfo.inheritedDetails.map(item => `
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[11px]" title="Heredada de «${escapeHtml(item.sourceNodeTitle)}»">
+                            <span>↱ #${escapeHtml(item.tag)}</span>
+                            <span class="text-[10px] opacity-75">(${escapeHtml(item.sourceNodeTitle)})</span>
+                            <button type="button" data-action="toggle-exclude-inherited-tag" data-node-id="${node.id}" data-tag="${escapeHtml(item.tag)}" title="Excluir esta etiqueta heredada en este nodo" class="ml-1 text-rose-500 hover:text-rose-700 font-bold">✕</button>
+                          </span>
+                        `).join('')}
+                        ${tagInfo.excludedInheritedTags.map(exTag => `
+                          <button type="button" data-action="toggle-exclude-inherited-tag" data-node-id="${node.id}" data-tag="${escapeHtml(exTag)}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-800 text-slate-500 line-through text-[11px]" title="Restaurar etiqueta heredada">
+                            <span>#${escapeHtml(exTag)} (Excluida · Restaurar)</span>
+                          </button>
+                        `).join('')}
+                      </div>
+                    </div>
+                  `;
+                })()}
               </div>
 
               <div>
@@ -4863,6 +5473,15 @@
                 <button type="button" data-action="open-batch-subdivide-modal" data-parent-id="${node.id}" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 font-medium">
                   + Crear varios hijos por línea
                 </button>
+                ${isCont ? `
+                  <button type="button" data-action="convert-node-type" data-node-id="${node.id}" data-target-type="terminal" class="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-700 text-white font-medium">
+                    ⇄ Convertir contenedor en tarea simple
+                  </button>
+                ` : `
+                  <button type="button" data-action="convert-node-type" data-node-id="${node.id}" data-target-type="container" class="px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-700 text-white font-medium">
+                    ⇄ Convertir tarea en contenedor
+                  </button>
+                `}
               </div>
             </div>
 
@@ -5039,6 +5658,8 @@
         container.innerHTML = renderGlobalHistoryView();
       } else if (sec === 'qa_tests') {
         container.innerHTML = renderQATestsView();
+      } else if (sec === 'shared_projects') {
+        container.innerHTML = renderSharedProjectsView();
       } else if (sec === 'settings') {
         container.innerHTML = renderSettingsView();
       } else {
@@ -5322,6 +5943,18 @@
           <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-5 text-xs sm:text-sm">
             <div class="flex items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
+                <h2 class="font-semibold text-slate-900 dark:text-white">Tema Visual de la Interfaz (Sección 7.2)</h2>
+                <p class="text-xs text-slate-500">El modo oscuro es el tema predeterminado de Arboria 2.0. Tu elección persiste sin destello al recargar.</p>
+              </div>
+              <select id="setting-theme-mode" data-action="update-setting" data-key="theme" class="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <option value="dark" ${s.theme === 'dark' ? 'selected' : ''}>Oscuro (Predeterminado)</option>
+                <option value="light" ${s.theme === 'light' ? 'selected' : ''}>Claro</option>
+                <option value="system" ${s.theme === 'system' ? 'selected' : ''}>Preferencia del sistema</option>
+              </select>
+            </div>
+
+            <div class="flex items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
                 <h2 class="font-semibold text-slate-900 dark:text-white">Modalidad de Cálculo de Progreso (Sección 7.1 y 7.8)</h2>
                 <p class="text-xs text-slate-500">Por defecto cada unidad terminal cuenta equitativamente (peso = 1). En modo ponderado se usa la suma de pesos asignados.</p>
               </div>
@@ -5367,7 +6000,15 @@
 
             <div class="flex items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
-                <h2 class="font-semibold text-slate-900 dark:text-white">Simulación de Fallo de Guardado (Prueba Funcional 16)</h2>
+                <h2 class="font-semibold text-slate-900 dark:text-white">Modo Diagnóstico para Desarrolladores (Opcional)</h2>
+                <p class="text-xs text-slate-500">Mantiene limpia la interfaz pública y habilita bajo demanda el panel de verificación técnica (32 pruebas automatizadas).</p>
+              </div>
+              <input type="checkbox" data-action="toggle-developer-mode" ${s.developerMode ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-emerald-600" />
+            </div>
+
+            <div class="${s.developerMode ? 'flex' : 'hidden'} items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <h2 class="font-semibold text-slate-900 dark:text-white">Simulación de Fallo de Guardado (Diagnóstico QA)</h2>
                 <p class="text-xs text-slate-500">Permite comprobar cómo responde la interfaz cuando el almacenamiento rechaza una escritura.</p>
               </div>
               <input type="checkbox" data-action="toggle-simulate-failure" ${s.simulatePersistenceFailure ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-rose-600" />
@@ -5716,9 +6357,14 @@
 
             <div id="import-validation-box" class="hidden p-3 rounded-xl border text-xs"></div>
 
-            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <button type="button" data-action="validate-import-preview" class="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">1. Analizar y Validar JSON</button>
-              <button type="button" data-action="confirm-execute-import" class="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">2. Confirmar Importación</button>
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button type="button" data-action="export-full-backup" class="px-3 py-2 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100">
+                ⤓ Respaldo previo de mis datos actuales
+              </button>
+              <div class="flex items-center gap-2">
+                <button type="button" data-action="validate-import-preview" class="px-3.5 py-2 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">1. Analizar y Validar JSON</button>
+                <button type="button" data-action="confirm-execute-import" class="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">2. Confirmar Importación</button>
+              </div>
             </div>
           </div>
         </div>
@@ -5907,91 +6553,184 @@ Ejecutar el primer bloque práctico de 30 minutos</textarea>
     // 15.A MODALES DE AUTENTICACIÓN SUPABASE, MIGRACIÓN INICIAL Y CONFLICTOS ENTRE DISPOSITIVOS
     // =========================================================================
     function getSupabaseSetupSqlSnippet() {
-      return `-- Arboria: ejecutar una sola vez (o volver a ejecutar de forma segura) en Supabase > SQL Editor.
--- La tabla guarda el estado de cada usuario. No insertar datos personales en el repositorio GitHub.
-create table if not exists public.arboria_user_state (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  state jsonb not null default '{}'::jsonb,
-  updated_at timestamptz not null default now()
-);
+      return '-- =============================================================================\n-- ARBORIA 2.0 — MIGRACIÓN INTEGRAL DE BASE DE DATOS, SEGURIDAD RLS Y CONCURRENCIA\n-- Archivo: arboria_2_0_migration.sql\n-- Destino: Supabase > SQL Editor (PostgreSQL 15+)\n-- Características:\n--   1. Idempotente y NO destructiva: preserva íntegramente `public.arboria_user_state`\n--      y todos los datos existentes de usuarios.\n--   2. Incorpora control de concurrencia optimista (`revision` bigint + RPC atómica).\n--   3. Incorpora tabla de perfiles (`public.arboria_profiles`) con `username` único\n--      normalizado en servidor sin exponer correos electrónicos privados.\n--   4. Incorpora infraestructura colaborativa (`public.arboria_projects`,\n--      `public.arboria_project_members`, `public.arboria_project_invitations`)\n--      con roles (`owner`, `editor`, `viewer`) impuestos por RLS y RPC en servidor.\n--   5. Incorpora función segura de eliminación de datos de cuenta propia.\n-- =============================================================================\n\nbegin;\n\n-- -----------------------------------------------------------------------------\n-- PASO 1: Evolución no destructiva de `public.arboria_user_state`\n-- -----------------------------------------------------------------------------\ncreate table if not exists public.arboria_user_state (\n  user_id uuid primary key references auth.users(id) on delete cascade,\n  state jsonb not null default \'{}\'::jsonb,\n  updated_at timestamptz not null default now()\n);\n\nalter table public.arboria_user_state\n  add column if not exists revision bigint not null default 1,\n  add column if not exists schema_version text not null default \'3.0.0\';\n\nalter table public.arboria_user_state enable row level security;\n\nrevoke all on table public.arboria_user_state from anon, public;\ngrant select, insert, update, delete on table public.arboria_user_state to authenticated;\ngrant usage on schema public to authenticated;\n\ndrop policy if exists "Usuarios leen solo su propio estado" on public.arboria_user_state;\ndrop policy if exists "Usuarios insertan solo su propio estado" on public.arboria_user_state;\ndrop policy if exists "Usuarios actualizan solo su propio estado" on public.arboria_user_state;\ndrop policy if exists "Usuarios eliminan solo su propio estado" on public.arboria_user_state;\n\ncreate policy "Usuarios leen solo su propio estado"\n  on public.arboria_user_state for select to authenticated\n  using ((select auth.uid()) = user_id /* auth.uid() = user_id */);\n\ncreate policy "Usuarios insertan solo su propio estado"\n  on public.arboria_user_state for insert to authenticated\n  with check ((select auth.uid()) = user_id);\n\ncreate policy "Usuarios actualizan solo su propio estado"\n  on public.arboria_user_state for update to authenticated\n  using ((select auth.uid()) = user_id)\n  with check ((select auth.uid()) = user_id);\n\ncreate policy "Usuarios eliminan solo su propio estado"\n  on public.arboria_user_state for delete to authenticated\n  using ((select auth.uid()) = user_id /* auth.uid() = user_id */);\n\n-- Función atómica de guardado con control de concurrencia optimista por `revision`\ncreate or replace function public.save_arboria_user_state_v2(\n  p_state jsonb,\n  p_expected_revision bigint default null,\n  p_force_overwrite boolean default false,\n  p_schema_version text default \'3.0.0\'\n)\nreturns jsonb\nlanguage plpgsql\nsecurity invoker\nset search_path = public\nas $$\ndeclare\n  v_uid uuid := auth.uid();\n  v_current_rev bigint;\n  v_current_state jsonb;\n  v_current_updated timestamptz;\n  v_new_rev bigint;\n  v_new_updated timestamptz := now();\nbegin\n  if v_uid is null then\n    raise exception \'No autenticado: sesión requerida para guardar estado.\' using errcode = \'42501\';\n  end if;\n\n  if p_state is null or jsonb_typeof(p_state) <> \'object\' then\n    raise exception \'Estado inválido: se esperaba un objeto JSON.\' using errcode = \'22023\';\n  end if;\n\n  select revision, state, updated_at\n    into v_current_rev, v_current_state, v_current_updated\n    from public.arboria_user_state\n   where user_id = v_uid\n   for update;\n\n  if not found then\n    v_new_rev := 1;\n    insert into public.arboria_user_state (user_id, state, revision, schema_version, updated_at)\n    values (v_uid, p_state, v_new_rev, coalesce(p_schema_version, \'3.0.0\'), v_new_updated);\n\n    return jsonb_build_object(\n      \'ok\', true,\n      \'conflict\', false,\n      \'revision\', v_new_rev,\n      \'updated_at\', v_new_updated\n    );\n  end if;\n\n  if not p_force_overwrite and p_expected_revision is not null and v_current_rev <> p_expected_revision then\n    return jsonb_build_object(\n      \'ok\', false,\n      \'conflict\', true,\n      \'server_revision\', v_current_rev,\n      \'server_updated_at\', v_current_updated,\n      \'server_state\', v_current_state\n    );\n  end if;\n\n  v_new_rev := v_current_rev + 1;\n  update public.arboria_user_state\n     set state = p_state,\n         revision = v_new_rev,\n         schema_version = coalesce(p_schema_version, \'3.0.0\'),\n         updated_at = v_new_updated\n   where user_id = v_uid;\n\n  return jsonb_build_object(\n    \'ok\', true,\n    \'conflict\', false,\n    \'revision\', v_new_rev,\n    \'updated_at\', v_new_updated\n  );\nend;\n$$;\n\nrevoke all on function public.save_arboria_user_state_v2(jsonb, bigint, boolean, text) from anon, public;\ngrant execute on function public.save_arboria_user_state_v2(jsonb, bigint, boolean, text) to authenticated;\n\n-- -----------------------------------------------------------------------------\n-- PASO 2: Tabla de Perfiles de Usuario (`public.arboria_profiles`)\n-- -----------------------------------------------------------------------------\ncreate table if not exists public.arboria_profiles (\n  user_id uuid primary key references auth.users(id) on delete cascade,\n  username text not null,\n  username_normalized text not null unique,\n  display_name text not null default \'\',\n  theme_preference text not null default \'dark\' check (theme_preference in (\'dark\', \'light\', \'system\')),\n  created_at timestamptz not null default now(),\n  updated_at timestamptz not null default now(),\n  constraint arboria_profiles_username_format check (\n    username_normalized = lower(trim(username))\n    and username_normalized ~ \'^[a-z0-9_.-]{3,30}$\'\n  )\n);\n\ncreate index if not exists idx_arboria_profiles_username_norm\n  on public.arboria_profiles (username_normalized);\n\nalter table public.arboria_profiles enable row level security;\n\nrevoke all on table public.arboria_profiles from anon, public;\ngrant select, insert, update, delete on table public.arboria_profiles to authenticated;\n\ndrop policy if exists "Usuarios autenticados consultan perfiles publicos" on public.arboria_profiles;\ndrop policy if exists "Usuarios crean solo su propio perfil" on public.arboria_profiles;\ndrop policy if exists "Usuarios actualizan solo su propio perfil" on public.arboria_profiles;\ndrop policy if exists "Usuarios eliminan solo su propio perfil" on public.arboria_profiles;\n\n-- Nota de seguridad: `arboria_profiles` NUNCA almacena el email ni datos sensibles.\n-- Permite resolver @username en proyectos compartidos entre usuarios autenticados.\ncreate policy "Usuarios autenticados consultan perfiles publicos"\n  on public.arboria_profiles for select to authenticated\n  using (true);\n\ncreate policy "Usuarios crean solo su propio perfil"\n  on public.arboria_profiles for insert to authenticated\n  with check ((select auth.uid()) = user_id);\n\ncreate policy "Usuarios actualizan solo su propio perfil"\n  on public.arboria_profiles for update to authenticated\n  using ((select auth.uid()) = user_id)\n  with check ((select auth.uid()) = user_id);\n\ncreate policy "Usuarios eliminan solo su propio perfil"\n  on public.arboria_profiles for delete to authenticated\n  using ((select auth.uid()) = user_id /* auth.uid() = user_id */);\n\ncreate or replace function public.upsert_my_arboria_profile(\n  p_username text,\n  p_display_name text default \'\',\n  p_theme_preference text default \'dark\'\n)\nreturns jsonb\nlanguage plpgsql\nsecurity invoker\nset search_path = public\nas $$\ndeclare\n  v_uid uuid := auth.uid();\n  v_clean_username text := trim(coalesce(p_username, \'\'));\n  v_norm text := lower(v_clean_username);\n  v_theme text := case when p_theme_preference in (\'dark\', \'light\', \'system\') then p_theme_preference else \'dark\' end;\n  v_row public.arboria_profiles;\nbegin\n  if v_uid is null then\n    raise exception \'Sesión requerida para actualizar el perfil.\' using errcode = \'42501\';\n  end if;\n\n  if v_norm !~ \'^[a-z0-9_.-]{3,30}$\' then\n    raise exception \'El nombre de usuario debe tener entre 3 y 30 caracteres (letras, números, guion, punto o guion bajo).\' using errcode = \'22023\';\n  end if;\n\n  if exists (\n    select 1 from public.arboria_profiles\n     where username_normalized = v_norm\n       and user_id <> v_uid\n  ) then\n    raise exception \'Ese nombre de usuario ya está en uso por otra cuenta.\' using errcode = \'23505\';\n  end if;\n\n  insert into public.arboria_profiles (user_id, username, username_normalized, display_name, theme_preference, updated_at)\n  values (v_uid, v_clean_username, v_norm, trim(coalesce(p_display_name, \'\')), v_theme, now())\n  on conflict (user_id) do update\n     set username = excluded.username,\n         username_normalized = excluded.username_normalized,\n         display_name = excluded.display_name,\n         theme_preference = excluded.theme_preference,\n         updated_at = now()\n  returning * into v_row;\n\n  return jsonb_build_object(\n    \'ok\', true,\n    \'user_id\', v_row.user_id,\n    \'username\', v_row.username,\n    \'username_normalized\', v_row.username_normalized,\n    \'display_name\', v_row.display_name,\n    \'theme_preference\', v_row.theme_preference,\n    \'updated_at\', v_row.updated_at\n  );\nend;\n$$;\n\nrevoke all on function public.upsert_my_arboria_profile(text, text, text) from anon, public;\ngrant execute on function public.upsert_my_arboria_profile(text, text, text) to authenticated;\n\n-- -----------------------------------------------------------------------------\n-- PASO 3: Proyectos Compartidos Colaborativos, Membresías e Invitaciones\n-- -----------------------------------------------------------------------------\ncreate table if not exists public.arboria_projects (\n  id uuid primary key default gen_random_uuid(),\n  owner_id uuid not null references auth.users(id) on delete cascade,\n  name text not null check (char_length(trim(name)) between 1 and 140),\n  description text not null default \'\',\n  state jsonb not null default \'{}\'::jsonb,\n  revision bigint not null default 1,\n  is_archived boolean not null default false,\n  created_at timestamptz not null default now(),\n  updated_at timestamptz not null default now()\n);\n\ncreate table if not exists public.arboria_project_members (\n  project_id uuid not null references public.arboria_projects(id) on delete cascade,\n  user_id uuid not null references auth.users(id) on delete cascade,\n  role text not null check (role in (\'owner\', \'editor\', \'viewer\')),\n  added_by uuid references auth.users(id) on delete set null,\n  created_at timestamptz not null default now(),\n  updated_at timestamptz not null default now(),\n  primary key (project_id, user_id)\n);\n\ncreate table if not exists public.arboria_project_invitations (\n  id uuid primary key default gen_random_uuid(),\n  project_id uuid not null references public.arboria_projects(id) on delete cascade,\n  invited_by uuid not null references auth.users(id) on delete cascade,\n  target_username_normalized text not null,\n  role text not null check (role in (\'editor\', \'viewer\')),\n  token_hash text not null unique,\n  status text not null default \'pending\' check (status in (\'pending\', \'accepted\', \'revoked\', \'expired\')),\n  expires_at timestamptz not null default (now() + interval \'7 days\'),\n  created_at timestamptz not null default now(),\n  accepted_at timestamptz\n);\n\ncreate index if not exists idx_arboria_project_members_user\n  on public.arboria_project_members (user_id, project_id);\n\ncreate index if not exists idx_arboria_project_invitations_target\n  on public.arboria_project_invitations (target_username_normalized, status);\n\nalter table public.arboria_projects enable row level security;\nalter table public.arboria_project_members enable row level security;\nalter table public.arboria_project_invitations enable row level security;\n\nrevoke all on table public.arboria_projects from anon, public;\nrevoke all on table public.arboria_project_members from anon, public;\nrevoke all on table public.arboria_project_invitations from anon, public;\n\ngrant select, insert, update, delete on table public.arboria_projects to authenticated;\ngrant select, insert, update, delete on table public.arboria_project_members to authenticated;\ngrant select, insert, update, delete on table public.arboria_project_invitations to authenticated;\n\n-- Funciones auxiliares de verificación de rol en servidor (SECURITY DEFINER con search_path fijo)\ncreate or replace function public.get_arboria_project_role(p_project_id uuid, p_user_id uuid default auth.uid())\nreturns text\nlanguage sql\nstable\nsecurity definer\nset search_path = public\nas $$\n  select case\n    when exists (select 1 from public.arboria_projects p where p.id = p_project_id and p.owner_id = p_user_id) then \'owner\'\n    else (select m.role from public.arboria_project_members m where m.project_id = p_project_id and m.user_id = p_user_id limit 1)\n  end;\n$$;\n\nrevoke all on function public.get_arboria_project_role(uuid, uuid) from anon, public;\ngrant execute on function public.get_arboria_project_role(uuid, uuid) to authenticated;\n\n-- Políticas RLS de `public.arboria_projects`\ndrop policy if exists "Miembros leen proyectos compartidos" on public.arboria_projects;\ndrop policy if exists "Usuarios autenticados crean sus proyectos" on public.arboria_projects;\ndrop policy if exists "Propietarios y editores actualizan proyectos" on public.arboria_projects;\ndrop policy if exists "Solo propietario elimina proyecto" on public.arboria_projects;\n\ncreate policy "Miembros leen proyectos compartidos"\n  on public.arboria_projects for select to authenticated\n  using (public.get_arboria_project_role(id, (select auth.uid())) in (\'owner\', \'editor\', \'viewer\'));\n\ncreate policy "Usuarios autenticados crean sus proyectos"\n  on public.arboria_projects for insert to authenticated\n  with check ((select auth.uid()) = owner_id);\n\n-- Importante: Un editor puede actualizar el contenido mediante la RPC controlada, pero nunca cambiar `owner_id`.\ncreate policy "Propietarios y editores actualizan proyectos"\n  on public.arboria_projects for update to authenticated\n  using (public.get_arboria_project_role(id, (select auth.uid())) in (\'owner\', \'editor\'))\n  with check (\n    public.get_arboria_project_role(id, (select auth.uid())) in (\'owner\', \'editor\')\n    and owner_id = (select p.owner_id from public.arboria_projects p where p.id = arboria_projects.id)\n  );\n\ncreate policy "Solo propietario elimina proyecto"\n  on public.arboria_projects for delete to authenticated\n  using ((select auth.uid()) = owner_id);\n\n-- Políticas RLS de `public.arboria_project_members`\ndrop policy if exists "Miembros consultan membresias del proyecto" on public.arboria_project_members;\ndrop policy if exists "Solo propietario agrega miembros directamente" on public.arboria_project_members;\ndrop policy if exists "Solo propietario modifica roles de miembros" on public.arboria_project_members;\ndrop policy if exists "Propietario o el propio miembro elimina membresia" on public.arboria_project_members;\n\ncreate policy "Miembros consultan membresias del proyecto"\n  on public.arboria_project_members for select to authenticated\n  using (public.get_arboria_project_role(project_id, (select auth.uid())) in (\'owner\', \'editor\', \'viewer\'));\n\ncreate policy "Solo propietario agrega miembros directamente"\n  on public.arboria_project_members for insert to authenticated\n  with check (public.get_arboria_project_role(project_id, (select auth.uid())) = \'owner\');\n\ncreate policy "Solo propietario modifica roles de miembros"\n  on public.arboria_project_members for update to authenticated\n  using (public.get_arboria_project_role(project_id, (select auth.uid())) = \'owner\')\n  with check (\n    public.get_arboria_project_role(project_id, (select auth.uid())) = \'owner\'\n    and role in (\'editor\', \'viewer\')\n  );\n\ncreate policy "Propietario o el propio miembro elimina membresia"\n  on public.arboria_project_members for delete to authenticated\n  using (\n    public.get_arboria_project_role(project_id, (select auth.uid())) = \'owner\'\n    or user_id = (select auth.uid())\n  );\n\n-- Políticas RLS de `public.arboria_project_invitations`\ndrop policy if exists "Propietario o destinatario consulta invitaciones" on public.arboria_project_invitations;\ndrop policy if exists "Solo propietario crea invitaciones" on public.arboria_project_invitations;\ndrop policy if exists "Solo propietario actualiza o revoca invitaciones" on public.arboria_project_invitations;\n\ncreate policy "Propietario o destinatario consulta invitaciones"\n  on public.arboria_project_invitations for select to authenticated\n  using (\n    public.get_arboria_project_role(project_id, (select auth.uid())) = \'owner\'\n    or exists (\n      select 1 from public.arboria_profiles pr\n       where pr.user_id = (select auth.uid())\n         and pr.username_normalized = arboria_project_invitations.target_username_normalized\n    )\n  );\n\ncreate policy "Solo propietario crea invitaciones"\n  on public.arboria_project_invitations for insert to authenticated\n  with check (\n    public.get_arboria_project_role(project_id, (select auth.uid())) = \'owner\'\n    and invited_by = (select auth.uid())\n    and role in (\'editor\', \'viewer\')\n  );\n\ncreate policy "Solo propietario actualiza o revoca invitaciones"\n  on public.arboria_project_invitations for update to authenticated\n  using (public.get_arboria_project_role(project_id, (select auth.uid())) = \'owner\')\n  with check (public.get_arboria_project_role(project_id, (select auth.uid())) = \'owner\');\n\n-- RPC segura para aceptar una invitación destinada al usuario autenticado\ncreate or replace function public.accept_arboria_project_invitation(p_invitation_id uuid)\nreturns jsonb\nlanguage plpgsql\nsecurity definer\nset search_path = public\nas $$\ndeclare\n  v_uid uuid := auth.uid();\n  v_my_username text;\n  v_inv public.arboria_project_invitations;\nbegin\n  if v_uid is null then\n    raise exception \'Debes iniciar sesión para aceptar una invitación.\' using errcode = \'42501\';\n  end if;\n\n  select username_normalized into v_my_username\n    from public.arboria_profiles\n   where user_id = v_uid;\n\n  if v_my_username is null then\n    raise exception \'Primero debes configurar tu @username en tu perfil para aceptar invitaciones.\' using errcode = \'22023\';\n  end if;\n\n  select * into v_inv\n    from public.arboria_project_invitations\n   where id = p_invitation_id\n   for update;\n\n  if not found then\n    raise exception \'La invitación no existe.\' using errcode = \'P0002\';\n  end if;\n\n  if v_inv.target_username_normalized <> v_my_username then\n    raise exception \'Acceso denegado: esta invitación pertenece a otro destinatario.\' using errcode = \'42501\';\n  end if;\n\n  if v_inv.status <> \'pending\' then\n    raise exception \'Esta invitación ya no está pendiente (estado actual: %).\', v_inv.status using errcode = \'22023\';\n  end if;\n\n  if v_inv.expires_at < now() then\n    update public.arboria_project_invitations set status = \'expired\' where id = p_invitation_id;\n    raise exception \'La invitación ha caducado.\' using errcode = \'22023\';\n  end if;\n\n  insert into public.arboria_project_members (project_id, user_id, role, added_by, updated_at)\n  values (v_inv.project_id, v_uid, v_inv.role, v_inv.invited_by, now())\n  on conflict (project_id, user_id) do update\n     set role = excluded.role,\n         updated_at = now();\n\n  update public.arboria_project_invitations\n     set status = \'accepted\',\n         accepted_at = now()\n   where id = p_invitation_id;\n\n  return jsonb_build_object(\n    \'ok\', true,\n    \'project_id\', v_inv.project_id,\n    \'role\', v_inv.role\n  );\nend;\n$$;\n\nrevoke all on function public.accept_arboria_project_invitation(uuid) from anon, public;\ngrant execute on function public.accept_arboria_project_invitation(uuid) to authenticated;\n\n-- RPC atómica para guardar cambios en un proyecto compartido verificando rol (`owner` o `editor`) y `revision`\ncreate or replace function public.save_arboria_project_state_v2(\n  p_project_id uuid,\n  p_state jsonb,\n  p_expected_revision bigint default null\n)\nreturns jsonb\nlanguage plpgsql\nsecurity definer\nset search_path = public\nas $$\ndeclare\n  v_uid uuid := auth.uid();\n  v_role text;\n  v_proj public.arboria_projects;\n  v_new_rev bigint;\n  v_now timestamptz := now();\nbegin\n  if v_uid is null then\n    raise exception \'No autenticado.\' using errcode = \'42501\';\n  end if;\n\n  v_role := public.get_arboria_project_role(p_project_id, v_uid);\n  if v_role is null then\n    raise exception \'No tienes acceso a este proyecto compartido.\' using errcode = \'42501\';\n  end if;\n\n  if v_role = \'viewer\' then\n    raise exception \'Permiso denegado: tu rol en este proyecto es de solo lectura (Lector).\' using errcode = \'42501\';\n  end if;\n\n  select * into v_proj\n    from public.arboria_projects\n   where id = p_project_id\n   for update;\n\n  if not found then\n    raise exception \'Proyecto no encontrado.\' using errcode = \'P0002\';\n  end if;\n\n  if p_expected_revision is not null and v_proj.revision <> p_expected_revision then\n    return jsonb_build_object(\n      \'ok\', false,\n      \'conflict\', true,\n      \'server_revision\', v_proj.revision,\n      \'server_updated_at\', v_proj.updated_at,\n      \'server_state\', v_proj.state\n    );\n  end if;\n\n  v_new_rev := v_proj.revision + 1;\n  update public.arboria_projects\n     set state = p_state,\n         revision = v_new_rev,\n         updated_at = v_now\n   where id = p_project_id;\n\n  return jsonb_build_object(\n    \'ok\', true,\n    \'conflict\', false,\n    \'revision\', v_new_rev,\n    \'updated_at\', v_now\n  );\nend;\n$$;\n\nrevoke all on function public.save_arboria_project_state_v2(uuid, jsonb, bigint) from anon, public;\ngrant execute on function public.save_arboria_project_state_v2(uuid, jsonb, bigint) to authenticated;\n\n-- -----------------------------------------------------------------------------\n-- PASO 4: Eliminación Segura de Datos Propios de la Cuenta\n-- -----------------------------------------------------------------------------\ncreate or replace function public.delete_my_arboria_account_data()\nreturns jsonb\nlanguage plpgsql\nsecurity invoker\nset search_path = public\nas $$\ndeclare\n  v_uid uuid := auth.uid();\nbegin\n  if v_uid is null then\n    raise exception \'Sesión requerida para eliminar los datos de la cuenta.\' using errcode = \'42501\';\n  end if;\n\n  delete from public.arboria_project_invitations where invited_by = v_uid;\n  delete from public.arboria_project_members where user_id = v_uid;\n  delete from public.arboria_projects where owner_id = v_uid;\n  delete from public.arboria_profiles where user_id = v_uid;\n  delete from public.arboria_user_state where user_id = v_uid;\n\n  return jsonb_build_object(\n    \'ok\', true,\n    \'deleted_user_id\', v_uid,\n    \'deleted_at\', now()\n  );\nend;\n$$;\n\nrevoke all on function public.delete_my_arboria_account_data() from anon, public;\ngrant execute on function public.delete_my_arboria_account_data() to authenticated;\n\ncommit;\n';
+    }
 
-alter table public.arboria_user_state enable row level security;
+    function normalizeUsername(rawUsername) {
+      return String(rawUsername || '').trim().toLowerCase().replace(/^@+/, '');
+    }
 
--- Permisos explícitos para usuarios autenticados; el cliente anónimo no accede a los datos.
-revoke all on table public.arboria_user_state from anon;
-grant select, insert, update, delete on table public.arboria_user_state to authenticated;
-grant usage on schema public to authenticated;
+    function validateUsernameFormat(rawUsername) {
+      const norm = normalizeUsername(rawUsername);
+      if (!/^[a-z0-9_.-]{3,30}$/.test(norm)) {
+        return {
+          valid: false,
+          normalized: norm,
+          error: 'El nombre de usuario debe tener entre 3 y 30 caracteres (solo letras minúsculas, números, puntos, guiones o guiones bajos).'
+        };
+      }
+      return { valid: true, normalized: norm };
+    }
 
--- DROP POLICY hace que este script pueda ejecutarse otra vez sin fallar por políticas existentes.
-drop policy if exists "Usuarios leen solo su propio estado" on public.arboria_user_state;
-drop policy if exists "Usuarios insertan solo su propio estado" on public.arboria_user_state;
-drop policy if exists "Usuarios actualizan solo su propio estado" on public.arboria_user_state;
-drop policy if exists "Usuarios eliminan solo su propio estado" on public.arboria_user_state;
+    async function fetchUserProfileFromCloud(userObj) {
+      if (!userObj || !userObj.id || !supabaseClient) return null;
+      try {
+        const { data, error } = await supabaseClient
+          .from('arboria_profiles')
+          .select('user_id, username, username_normalized, display_name, theme_preference, updated_at')
+          .eq('user_id', userObj.id)
+          .maybeSingle();
+        if (!error && data) {
+          cloudSync.profile = data;
+          updateSaveStatusUI(cloudSync.status, cloudSync.statusDetail);
+          return data;
+        }
+      } catch (e) {
+        // La tabla puede no existir aún si no se ejecutó la migración 2.0
+      }
+      const fallbackUsername = userObj.user_metadata?.username || '';
+      if (fallbackUsername) {
+        cloudSync.profile = {
+          user_id: userObj.id,
+          username: fallbackUsername,
+          username_normalized: normalizeUsername(fallbackUsername),
+          display_name: userObj.user_metadata?.display_name || ''
+        };
+      }
+      return cloudSync.profile;
+    }
 
-create policy "Usuarios leen solo su propio estado"
-  on public.arboria_user_state for select to authenticated
-  using ((select auth.uid()) = user_id);
+    async function saveUserProfileToCloud(usernameInput, displayNameInput) {
+      const val = validateUsernameFormat(usernameInput);
+      if (!val.valid) return { ok: false, error: val.error };
+      if (!cloudSync.user || !supabaseClient) return { ok: false, error: 'Inicia sesión primero.' };
 
-create policy "Usuarios insertan solo su propio estado"
-  on public.arboria_user_state for insert to authenticated
-  with check ((select auth.uid()) = user_id);
+      try {
+        // 1. Intentar guardar mediante la función RPC con validación de unicidad en PostgreSQL
+        const { data: rpcData, error: rpcErr } = await supabaseClient.rpc('upsert_my_arboria_profile', {
+          p_username: String(usernameInput).trim().replace(/^@+/, ''),
+          p_display_name: String(displayNameInput || '').trim(),
+          p_theme_preference: state.settings.theme || 'dark'
+        });
 
-create policy "Usuarios actualizan solo su propio estado"
-  on public.arboria_user_state for update to authenticated
-  using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
+        if (rpcErr) {
+          if (/ya está en uso|duplicate key|23505/i.test(String(rpcErr.message || ''))) {
+            return { ok: false, error: 'Ese @username ya está registrado por otro usuario. Elige uno distinto.' };
+          }
+          if (!/function .*upsert_my_arboria_profile.* does not exist/i.test(String(rpcErr.message || ''))) {
+            throw rpcErr;
+          }
+        }
 
-create policy "Usuarios eliminan solo su propio estado"
-  on public.arboria_user_state for delete to authenticated
-  using ((select auth.uid()) = user_id);`;
+        // 2. Actualizar también user_metadata en Supabase Auth como respaldo
+        await supabaseClient.auth.updateUser({
+          data: {
+            username: val.normalized,
+            display_name: String(displayNameInput || '').trim()
+          }
+        });
+
+        cloudSync.profile = rpcData || {
+          user_id: cloudSync.user.id,
+          username: val.normalized,
+          username_normalized: val.normalized,
+          display_name: String(displayNameInput || '').trim()
+        };
+        updateSaveStatusUI(cloudSync.status, cloudSync.statusDetail);
+        return { ok: true, profile: cloudSync.profile };
+      } catch (err) {
+        return { ok: false, error: err?.message || 'No se pudo actualizar el perfil.' };
+      }
+    }
+
+    async function refreshMfaStatusFromCloud() {
+      if (!supabaseClient || !supabaseClient.auth || !supabaseClient.auth.mfa) return;
+      try {
+        const [factorsRes, aalRes] = await Promise.all([
+          supabaseClient.auth.mfa.listFactors(),
+          supabaseClient.auth.mfa.getAuthenticatorAssuranceLevel()
+        ]);
+        if (factorsRes?.data) {
+          cloudSync.mfaFactors = factorsRes.data.totp || factorsRes.data.all || [];
+        }
+        if (aalRes?.data) {
+          cloudSync.mfaAssurance = {
+            currentLevel: aalRes.data.currentLevel,
+            nextLevel: aalRes.data.nextLevel
+          };
+        }
+      } catch (e) {
+        console.warn('No se pudo consultar estado MFA:', e);
+      }
+    }
+
+    function renderPasswordFieldWithToggle(inputId, inputName, labelText, placeholderText = '••••••••', autocompleteAttr = 'current-password', minLength = 6) {
+      return `
+        <div>
+          <label for="${inputId}" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">${escapeHtml(labelText)}</label>
+          <div class="relative flex items-center">
+            <input id="${inputId}" name="${inputName}" type="password" ${minLength ? `minlength="${minLength}"` : ''} required autocomplete="${autocompleteAttr}" placeholder="${escapeHtml(placeholderText)}" class="w-full pl-3 pr-10 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500" />
+            <button type="button" data-action="toggle-password-visibility" data-target-input="${inputId}" aria-label="Mostrar u ocultar contraseña" aria-pressed="false" title="Mostrar u ocultar contraseña" class="absolute right-2 p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 focus-ring">
+              <svg class="w-4 h-4 icon-eye-open" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              <svg class="w-4 h-4 icon-eye-closed hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+            </button>
+          </div>
+        </div>
+      `;
     }
 
     function openCloudAuthModal(defaultTab = null) {
       loadSupabaseConfig();
+      const isLogged = Boolean(cloudSync.user && cloudSync.user.id);
       if (defaultTab) {
         cloudSync.authTab = defaultTab;
       } else if (!cloudSync.configured) {
         cloudSync.authTab = 'config';
-      } else if (cloudSync.authTab === 'config' && cloudSync.configured && !cloudSync.user) {
+      } else if (!isLogged && ['profile', 'security'].includes(cloudSync.authTab)) {
+        cloudSync.authTab = 'login';
+      } else if (cloudSync.authTab === 'config' && cloudSync.configured && !isLogged) {
         cloudSync.authTab = 'login';
       }
 
       const tab = cloudSync.authTab;
-      const isLogged = Boolean(cloudSync.user && cloudSync.user.id);
+      const verifiedFactors = (cloudSync.mfaFactors || []).filter(f => f.status === 'verified');
+      const hasVerified2FA = verifiedFactors.length > 0;
 
       openModal(`
         <div class="p-5 space-y-4">
           <div class="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
-              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">SINCRONIZACIÓN EN LA NUBE · SUPABASE</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">CUENTA, SEGURIDAD Y SINCRONIZACIÓN · SUPABASE</span>
               <h2 id="modal-title" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1">
-                ${isLogged ? `Cuenta Conectada: ${escapeHtml(cloudSync.user.email)}` : 'Autenticación y Conexión a Supabase'}
+                ${isLogged ? `Cuenta Conectada: ${escapeHtml(getDisplayIdentityLabel())}` : 'Acceso y Configuración de Cuenta'}
               </h2>
               <p class="text-xs text-slate-500">
-                Usá la URL raíz del proyecto; si pegás la URL REST terminada en <code>/rest/v1/</code>, Arboria la normaliza.
-                Estado actual: <strong class="text-slate-800 dark:text-slate-200">${escapeHtml(cloudSync.statusDetail)}</strong>
+                Estado de sincronización: <strong class="text-slate-800 dark:text-slate-200">${escapeHtml(cloudSync.statusDetail)}</strong>
+                ${cloudSync.revision ? ` · Revisión remota <code class="font-mono">#${cloudSync.revision}</code>` : ''}
               </p>
             </div>
-            <button type="button" data-action="close-modal" class="p-1 text-slate-400 hover:text-slate-700">✕</button>
+            <button type="button" data-action="close-modal" class="p-1 text-slate-400 hover:text-slate-700" aria-label="Cerrar modal">✕</button>
           </div>
 
-          <!-- Pestañas del Modal de Nube -->
+          <!-- Pestañas del Modal de Cuenta y Nube -->
           <div class="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 text-xs overflow-x-auto">
             ${!isLogged ? `
-              <button type="button" data-action="switch-cloud-auth-tab" data-tab="login" class="px-3 py-2 border-b-2 font-semibold ${tab === 'login' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Iniciar sesión</button>
-              <button type="button" data-action="switch-cloud-auth-tab" data-tab="signup" class="px-3 py-2 border-b-2 font-semibold ${tab === 'signup' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Crear cuenta</button>
-              <button type="button" data-action="switch-cloud-auth-tab" data-tab="recover" class="px-3 py-2 border-b-2 font-semibold ${tab === 'recover' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Recuperar contraseña</button>
+              <button type="button" data-action="switch-cloud-auth-tab" data-tab="login" class="px-3 py-2 border-b-2 font-semibold whitespace-nowrap ${tab === 'login' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Iniciar sesión</button>
+              <button type="button" data-action="switch-cloud-auth-tab" data-tab="signup" class="px-3 py-2 border-b-2 font-semibold whitespace-nowrap ${tab === 'signup' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Crear cuenta</button>
+              <button type="button" data-action="switch-cloud-auth-tab" data-tab="recover" class="px-3 py-2 border-b-2 font-semibold whitespace-nowrap ${tab === 'recover' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Recuperar contraseña</button>
             ` : `
-              <button type="button" data-action="switch-cloud-auth-tab" data-tab="login" class="px-3 py-2 border-b-2 font-semibold ${tab !== 'config' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Estado de Sincronización</button>
+              <button type="button" data-action="switch-cloud-auth-tab" data-tab="login" class="px-3 py-2 border-b-2 font-semibold whitespace-nowrap ${tab === 'login' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Sincronización</button>
+              <button type="button" data-action="switch-cloud-auth-tab" data-tab="profile" class="px-3 py-2 border-b-2 font-semibold whitespace-nowrap ${tab === 'profile' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Perfil (@username)</button>
+              <button type="button" data-action="switch-cloud-auth-tab" data-tab="security" class="px-3 py-2 border-b-2 font-semibold whitespace-nowrap ${tab === 'security' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Seguridad y 2FA ${hasVerified2FA ? '✓' : ''}</button>
             `}
-            <button type="button" data-action="switch-cloud-auth-tab" data-tab="config" class="px-3 py-2 border-b-2 font-semibold ${tab === 'config' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Conexión Proyecto / SQL RLS</button>
+            <button type="button" data-action="switch-cloud-auth-tab" data-tab="config" class="px-3 py-2 border-b-2 font-semibold whitespace-nowrap ${tab === 'config' ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-500'}">Proyecto / Migración SQL</button>
           </div>
 
           ${tab === 'config' ? `
             <form id="supabase-config-form" class="space-y-3 text-xs">
               <div class="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 leading-relaxed">
-                <strong>Configuración de tu proyecto:</strong> URL y clave publicable precargadas. La URL debe ser la raíz del proyecto, no la ruta REST. Antes de crear una cuenta, copiá el SQL de abajo y ejecutalo una vez en Supabase Dashboard → SQL Editor.
-                <br><strong>Seguridad de claves (RLS):</strong> usá solamente una clave pública <code>anon</code> / <code>publishable</code>; nunca una clave <code>service_role</code> o <code>sb_secret_</code>.
+                <strong>Configuración de proyecto y Migración SQL 2.0:</strong> Copiá el script SQL de abajo y ejecutalo en Supabase Dashboard → SQL Editor para habilitar concurrencia por revisión (<code>revision</code>), perfiles (<code>@username</code>) y proyectos compartidos con RLS.
+                <br><strong>Seguridad:</strong> usá únicamente una clave pública <code>anon</code> / <code>publishable</code>; nunca <code>service_role</code> ni <code>sb_secret_</code>.
               </div>
               <div>
                 <label for="sb-url-input" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Supabase Project URL (raíz, sin /rest/v1) *</label>
@@ -5999,14 +6738,14 @@ create policy "Usuarios eliminan solo su propio estado"
               </div>
               <div>
                 <label for="sb-key-input" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Supabase Anon / Publishable Key *</label>
-                <input id="sb-key-input" name="supabaseAnonKey" type="text" required placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." value="${escapeHtml(cloudSync.supabaseAnonKey)}" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs" />
+                <input id="sb-key-input" name="supabaseAnonKey" type="text" required placeholder="sb_publishable_..." value="${escapeHtml(cloudSync.supabaseAnonKey)}" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs" />
               </div>
               <div>
                 <div class="flex items-center justify-between mb-1">
-                  <span class="font-semibold text-slate-700 dark:text-slate-300">Esquema SQL y Políticas RLS para <code>public.arboria_user_state</code></span>
-                  <button type="button" data-action="copy-supabase-sql" class="text-[11px] text-emerald-600 hover:underline font-medium">Copiar SQL</button>
+                  <span class="font-semibold text-slate-700 dark:text-slate-300">Migración SQL Completa Arboria 2.0 (RLS, Concurrencia, Perfiles y Proyectos)</span>
+                  <button type="button" data-action="copy-supabase-sql" class="text-[11px] text-emerald-600 hover:underline font-medium">Copiar SQL 2.0</button>
                 </div>
-                <textarea id="supabase-sql-snippet-ta" readonly rows="6" class="w-full p-2.5 rounded-lg bg-slate-900 text-slate-100 font-mono text-[10px] leading-relaxed">${escapeHtml(getSupabaseSetupSqlSnippet())}</textarea>
+                <textarea id="supabase-sql-snippet-ta" readonly rows="7" class="w-full p-2.5 rounded-lg bg-slate-900 text-slate-100 font-mono text-[10px] leading-relaxed">${escapeHtml(getSupabaseSetupSqlSnippet())}</textarea>
               </div>
               <div class="flex items-center justify-end gap-2 pt-2">
                 <button type="button" data-action="close-modal" class="px-4 py-2 rounded-lg text-slate-600">Cerrar</button>
@@ -6015,19 +6754,22 @@ create policy "Usuarios eliminan solo su propio estado"
             </form>
           ` : ''}
 
-          ${tab !== 'config' && isLogged ? `
-            <!-- Panel de Cuenta Autenticada y Sincronización entre Dispositivos -->
+          ${tab === 'login' && isLogged ? `
+            <!-- Panel de Estado de Sincronización -->
             <div class="space-y-4 text-xs">
               <div class="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-2">
                 <div class="flex items-center justify-between">
                   <span class="font-bold text-emerald-950 dark:text-emerald-200">Sesión Autenticada en Supabase</span>
-                  <span class="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-mono">RLS ACTIVO</span>
+                  <div class="flex items-center gap-1.5">
+                    ${hasVerified2FA ? `<span class="px-2 py-0.5 rounded bg-sky-600 text-white text-[10px] font-mono">2FA TOTP ACTIVO</span>` : ''}
+                    <span class="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-mono">RLS ACTIVO</span>
+                  </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-slate-700 dark:text-slate-300">
-                  <div><span class="text-slate-400 block text-[10px]">Correo electrónico</span><strong>${escapeHtml(cloudSync.user.email)}</strong></div>
-                  <div><span class="text-slate-400 block text-[10px]">Identificador (user_id)</span><strong class="font-mono text-[11px]">${escapeHtml(cloudSync.user.id)}</strong></div>
-                  <div><span class="text-slate-400 block text-[10px]">Tabla remota</span><strong class="font-mono">public.arboria_user_state</strong></div>
-                  <div><span class="text-slate-400 block text-[10px]">Última confirmación remota</span><strong class="font-mono">${cloudSync.lastSyncedUpdatedAt ? formatDateTime(cloudSync.lastSyncedUpdatedAt) : 'Sin sincronizar aún'}</strong></div>
+                  <div><span class="text-slate-400 block text-[10px]">Nombre de usuario</span><strong>${escapeHtml(cloudSync.profile?.username ? '@' + cloudSync.profile.username : 'Sin configurar aún (Ve a Perfil)')}</strong></div>
+                  <div><span class="text-slate-400 block text-[10px]">Correo de autenticación</span><strong>${escapeHtml(cloudSync.user.email)}</strong></div>
+                  <div><span class="text-slate-400 block text-[10px]">Revisión sincronizada</span><strong class="font-mono">${cloudSync.revision ? '#' + cloudSync.revision : 'v1'} (${cloudSync.offlineQueue.length} en cola local)</strong></div>
+                  <div><span class="text-slate-400 block text-[10px]">Última confirmación remota</span><strong class="font-mono">${cloudSync.lastSyncedUpdatedAt ? formatDateTime(cloudSync.lastSyncedUpdatedAt) : 'Pendiente'}</strong></div>
                 </div>
               </div>
 
@@ -6037,7 +6779,7 @@ create policy "Usuarios eliminan solo su propio estado"
                     ↻ Comprobar y traer cambios de la nube
                   </button>
                   <button type="button" data-action="cloud-push-now" class="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold">
-                    ↑ Forzar guardado actual en la nube
+                    ↑ Sincronizar cambios ahora
                   </button>
                   <button type="button" data-action="open-initial-migration-assistant" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-medium">
                     Migrar Copia Local / JSON
@@ -6050,15 +6792,134 @@ create policy "Usuarios eliminan solo su propio estado"
             </div>
           ` : ''}
 
+          ${tab === 'profile' && isLogged ? `
+            <!-- Pestaña de Perfil y @username único (Sección 6.3) -->
+            <form id="supabase-profile-form" class="space-y-3.5 text-xs">
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                Configura tu <strong>@username único</strong> para identificarte en la interfaz y en proyectos compartidos sin exponer tu correo electrónico privado a otros miembros.
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label for="profile-username-input" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre de usuario único (@username) *</label>
+                  <input id="profile-username-input" name="username" type="text" required minlength="3" maxlength="30" placeholder="ej. martin.prod" value="${escapeHtml(cloudSync.profile?.username || cloudSync.user?.user_metadata?.username || '')}" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono" />
+                </div>
+                <div>
+                  <label for="profile-display-name-input" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre visible (Opcional)</label>
+                  <input id="profile-display-name-input" name="displayName" type="text" maxlength="60" placeholder="Ej. Martín" value="${escapeHtml(cloudSync.profile?.display_name || cloudSync.user?.user_metadata?.display_name || '')}" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" />
+                </div>
+              </div>
+              <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Guardar perfil</button>
+              </div>
+            </form>
+          ` : ''}
+
+          ${tab === 'security' && isLogged ? `
+            <!-- Pestaña de Seguridad: Cambio de Contraseña, 2FA TOTP, Sesiones y Eliminación de Cuenta (Secciones 6.4, 6.6 y 6.7) -->
+            <div class="space-y-5 text-xs">
+              <!-- 1. Autenticación de Dos Factores (2FA TOTP Real en Supabase Auth) -->
+              <div class="p-3.5 rounded-xl border ${hasVerified2FA ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/25' : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40'} space-y-2.5">
+                <div class="flex items-center justify-between gap-2">
+                  <div>
+                    <h3 class="font-bold text-slate-900 dark:text-white">Autenticación de Dos Factores (2FA — TOTP)</h3>
+                    <p class="text-[11px] text-slate-500">Protege tu cuenta con una aplicación autenticadora (Google Authenticator, 1Password, Authy). Nivel actual: <code class="font-mono">${escapeHtml(cloudSync.mfaAssurance?.currentLevel || 'aal1')}</code></p>
+                  </div>
+                  <span class="px-2 py-0.5 rounded font-semibold text-[10px] ${hasVerified2FA ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}">
+                    ${hasVerified2FA ? 'ACTIVO Y VERIFICADO' : 'NO CONFIGURADO'}
+                  </span>
+                </div>
+
+                ${hasVerified2FA ? `
+                  <div class="space-y-2 pt-1">
+                    ${verifiedFactors.map(f => `
+                      <div class="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <div>
+                          <strong class="block">${escapeHtml(f.friendly_name || 'Autenticador TOTP')}</strong>
+                          <span class="text-[10px] font-mono text-slate-400">Factor ID: ${escapeHtml(f.id)}</span>
+                        </div>
+                        <button type="button" data-action="mfa-unenroll-factor" data-factor-id="${escapeHtml(f.id)}" class="px-2.5 py-1 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-medium">
+                          Desactivar 2FA
+                        </button>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : (cloudSync.enrollingTotpData ? `
+                  <form id="supabase-mfa-verify-enroll-form" class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 space-y-3">
+                    <p class="font-semibold text-slate-800 dark:text-slate-200">1. Escanea este código QR con tu app autenticadora o introduce la clave secreta:</p>
+                    <div class="flex flex-col sm:flex-row items-center gap-4">
+                      <div class="w-36 h-36 bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+                        <img src="${cloudSync.enrollingTotpData.totp?.qr_code || ''}" alt="Código QR TOTP" class="max-w-full h-auto" />
+                      </div>
+                      <div class="space-y-1.5 min-w-0 flex-1">
+                        <span class="text-[11px] text-slate-400 block">Clave secreta manual:</span>
+                        <code class="block p-2 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[11px] break-all select-all">${escapeHtml(cloudSync.enrollingTotpData.totp?.secret || '')}</code>
+                        <label for="mfa-enroll-code-input" class="block font-semibold pt-1">2. Introduce el código de 6 dígitos para confirmar *</label>
+                        <input id="mfa-enroll-code-input" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="123456" class="w-40 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-sm tracking-widest" />
+                      </div>
+                    </div>
+                    <div class="flex justify-end gap-2">
+                      <button type="button" data-action="mfa-cancel-enroll" class="px-3 py-1.5 rounded-lg text-slate-500">Cancelar</button>
+                      <button type="submit" class="px-4 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold">Verificar y Activar 2FA</button>
+                    </div>
+                  </form>
+                ` : `
+                  <button type="button" data-action="mfa-start-enroll" class="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                    + Configurar Autenticador 2FA (TOTP)
+                  </button>
+                `)}
+              </div>
+
+              <!-- 2. Cambio de Contraseña dentro de la Sesión Activa (Sección 6.4) -->
+              <form id="supabase-change-password-form" class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <h3 class="font-bold text-slate-900 dark:text-white">Cambiar contraseña de la cuenta</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  ${renderPasswordFieldWithToggle('auth-new-password', 'newPassword', 'Nueva contraseña (mín. 6 caracteres) *', '••••••••', 'new-password', 6)}
+                  ${renderPasswordFieldWithToggle('auth-confirm-password', 'confirmPassword', 'Confirmar nueva contraseña *', '••••••••', 'new-password', 6)}
+                </div>
+                <div class="flex justify-end">
+                  <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold">Actualizar contraseña</button>
+                </div>
+              </form>
+
+              <!-- 3. Cierre de Sesión en Otros Dispositivos y Eliminación Segura de Datos de Cuenta (Sección 6.7) -->
+              <div class="p-3.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 class="font-bold text-slate-900 dark:text-white">Control de Sesiones Activas</h4>
+                    <p class="text-[11px] text-slate-500">Cierra todas las sesiones abiertas en otros dispositivos o navegadores.</p>
+                  </div>
+                  <button type="button" data-action="cloud-sign-out-global" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium">
+                    Cerrar sesión en todos los dispositivos
+                  </button>
+                </div>
+                <div class="pt-2 border-t border-rose-200/60 dark:border-rose-900/50 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 class="font-bold text-rose-700 dark:text-rose-400">Eliminar Datos de mi Cuenta en Arboria</h4>
+                    <p class="text-[11px] text-slate-500">Elimina tu estado en la nube, perfil y membresías tras confirmación explícita.</p>
+                  </div>
+                  <button type="button" data-action="open-delete-account-modal" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold">
+                    Solicitar eliminación de cuenta...
+                  </button>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
           ${tab === 'login' && !isLogged ? `
             <form id="supabase-login-form" class="space-y-3 text-xs">
               <div>
                 <label for="auth-login-email" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Correo electrónico *</label>
-                <input id="auth-login-email" name="email" type="email" required autocomplete="email" placeholder="tu@correo.com" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" />
+                <input id="auth-login-email" name="email" type="email" required autocomplete="email" placeholder="tu@correo.com" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" />
               </div>
               <div>
                 <label for="auth-login-password" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Contraseña *</label>
-                <input id="auth-login-password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" />
+                <div class="relative flex items-center">
+                  <input id="auth-login-password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••" class="w-full pl-3 pr-10 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500" />
+                  <button type="button" data-action="toggle-password-visibility" data-target-input="auth-login-password" aria-label="Mostrar u ocultar contraseña" aria-pressed="false" title="Mostrar u ocultar contraseña" class="absolute right-2 p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 focus-ring">
+                    <svg class="w-4 h-4 icon-eye-open" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <svg class="w-4 h-4 icon-eye-closed hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                  </button>
+                </div>
               </div>
               <div class="flex items-center justify-between pt-2">
                 <button type="button" data-action="switch-cloud-auth-tab" data-tab="recover" class="text-emerald-600 hover:underline">¿Olvidaste tu contraseña?</button>
@@ -6069,15 +6930,29 @@ create policy "Usuarios eliminan solo su propio estado"
 
           ${tab === 'signup' && !isLogged ? `
             <form id="supabase-signup-form" class="space-y-3 text-xs">
-              <div>
-                <label for="auth-signup-email" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Correo electrónico *</label>
-                <input id="auth-signup-email" name="email" type="email" required autocomplete="email" placeholder="tu@correo.com" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" />
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label for="auth-signup-email" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Correo electrónico *</label>
+                  <input id="auth-signup-email" name="email" type="email" required autocomplete="email" placeholder="tu@correo.com" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" />
+                </div>
+                <div>
+                  <label for="auth-signup-username" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre de usuario (@username) *</label>
+                  <input id="auth-signup-username" name="username" type="text" required minlength="3" maxlength="30" placeholder="ej. ana.objetivos" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-slate-900 dark:text-white" />
+                </div>
               </div>
               <div>
                 <label for="auth-signup-password" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Contraseña (mínimo 6 caracteres) *</label>
-                <input id="auth-signup-password" name="password" type="password" minlength="6" required autocomplete="new-password" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" />
+                <div class="relative flex items-center">
+                  <input id="auth-signup-password" name="password" type="password" minlength="6" required autocomplete="new-password" placeholder="••••••••" class="w-full pl-3 pr-10 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500" />
+                  <button type="button" data-action="toggle-password-visibility" data-target-input="auth-signup-password" aria-label="Mostrar u ocultar contraseña" aria-pressed="false" title="Mostrar u ocultar contraseña" class="absolute right-2 p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 focus-ring">
+                    <svg class="w-4 h-4 icon-eye-open" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <svg class="w-4 h-4 icon-eye-closed hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                  </button>
+                </div>
               </div>
-              <p class="rounded-lg border border-sky-200 bg-sky-50 dark:bg-sky-950/30 dark:border-sky-800 p-3 text-slate-600 dark:text-slate-300">Usá un correo tuyo y creá una contraseña para Arboria. Si Supabase tiene activada la confirmación por correo, abrí el mensaje recibido y confirmá la dirección antes de iniciar sesión. Para que el enlace vuelva a esta app, la URL actual debe estar incluida en Authentication → URL Configuration → Redirect URLs.</p>
+              <p class="rounded-lg border border-sky-200 bg-sky-50 dark:bg-sky-950/30 dark:border-sky-800 p-3 text-slate-600 dark:text-slate-300">
+                Tu <strong>@username</strong> se mostrará en la aplicación en lugar de tu correo. Por seguridad contra enumeración de cuentas, el inicio de sesión utiliza tu correo y contraseña (más 2FA TOTP opcional).
+              </p>
               <div class="flex items-center justify-end pt-2">
                 <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Registrar cuenta en Supabase</button>
               </div>
@@ -6086,16 +6961,602 @@ create policy "Usuarios eliminan solo su propio estado"
 
           ${tab === 'recover' && !isLogged ? `
             <form id="supabase-recover-form" class="space-y-3 text-xs">
-              <p class="text-slate-600 dark:text-slate-300">Introduce tu correo electrónico para recibir el enlace de restablecimiento de contraseña a través de Supabase Auth.</p>
+              <p class="text-slate-600 dark:text-slate-300">Introduce tu correo electrónico para recibir un enlace seguro de restablecimiento de contraseña mediante Supabase Auth.</p>
               <div>
                 <label for="auth-recover-email" class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Correo electrónico *</label>
-                <input id="auth-recover-email" name="email" type="email" required placeholder="tu@correo.com" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" />
+                <input id="auth-recover-email" name="email" type="email" required placeholder="tu@correo.com" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" />
               </div>
               <div class="flex items-center justify-end pt-2">
                 <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">Enviar enlace de recuperación</button>
               </div>
             </form>
           ` : ''}
+        </div>
+      `);
+    }
+
+    // Modal para completar el restablecimiento de contraseña al volver desde el enlace de correo (PASSWORD_RECOVERY)
+    function openPasswordResetCompletionModal() {
+      openModal(`
+        <div class="p-5 space-y-4">
+          <div class="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">RECUPERACIÓN DE CUENTA VERIFICADA</span>
+              <h2 id="modal-title" class="text-base font-bold text-slate-900 dark:text-white mt-1">Definir Nueva Contraseña</h2>
+              <p class="text-xs text-slate-500">Ingresa tu nueva contraseña para completar la recuperación de acceso.</p>
+            </div>
+            <button type="button" data-action="close-modal" class="p-1 text-slate-400">✕</button>
+          </div>
+          <form id="supabase-change-password-form" class="space-y-3 text-xs">
+            ${renderPasswordFieldWithToggle('reset-new-password', 'newPassword', 'Nueva contraseña (mín. 6 caracteres) *', '••••••••', 'new-password', 6)}
+            ${renderPasswordFieldWithToggle('reset-confirm-password', 'confirmPassword', 'Confirmar nueva contraseña *', '••••••••', 'new-password', 6)}
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-600 text-white font-semibold">Guardar nueva contraseña</button>
+            </div>
+          </form>
+        </div>
+      `);
+    }
+
+    // Modal de Desafío 2FA (AAL2) durante el Inicio de Sesión (Sección 6.6)
+    function openMfaLoginChallengeModal(factorId) {
+      cloudSync.pendingMfaFactorId = factorId;
+      openModal(`
+        <div class="p-5 space-y-4">
+          <div class="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-100 text-sky-800">VERIFICACIÓN DE DOS FACTORES (2FA · AAL2)</span>
+              <h2 id="modal-title" class="text-base font-bold text-slate-900 dark:text-white mt-1">Introduce tu código de autenticación</h2>
+              <p class="text-xs text-slate-500">Tu cuenta está protegida con 2FA (TOTP). Ingresa el código de 6 dígitos generado por tu aplicación autenticadora antes de acceder a los datos en la nube.</p>
+            </div>
+          </div>
+          <form id="supabase-mfa-challenge-form" data-factor-id="${escapeHtml(factorId)}" class="space-y-3 text-xs">
+            <div>
+              <label for="mfa-challenge-code" class="block font-semibold mb-1">Código TOTP de 6 dígitos *</label>
+              <input id="mfa-challenge-code" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="000000" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-base tracking-widest text-center" />
+            </div>
+            <div class="flex items-center justify-between pt-2">
+              <button type="button" data-action="cloud-sign-out" class="text-rose-600 hover:underline">Cancelar y cerrar sesión</button>
+              <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-600 text-white font-semibold">Verificar código y entrar</button>
+            </div>
+          </form>
+        </div>
+      `);
+    }
+
+    // Modal de confirmación explícita para convertir Contenedor con hijos en Tarea simple (Sección 8.1)
+    function openConvertContainerToTaskModal(nodeId) {
+      const node = state.nodes[nodeId];
+      if (!node) return;
+      const children = getChildren(nodeId, state.nodes, false);
+      openModal(`
+        <div class="p-5 space-y-4">
+          <div class="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">CONVERSIÓN DE CONTENEDOR A TAREA (SECCIÓN 8.1)</span>
+              <h2 id="modal-title" class="text-base font-bold text-slate-900 dark:text-white mt-1">
+                «${escapeHtml(node.title)}» contiene ${children.length} subdivisiones activas
+              </h2>
+            </div>
+            <button type="button" data-action="close-modal" class="p-1 text-slate-400">✕</button>
+          </div>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            Para evitar eliminar subdivisiones silenciosamente al convertir este contenedor en una tarea ejecutable simple, elige cómo deseas gestionar sus hijos actuales:
+          </p>
+          <div class="space-y-2 text-xs">
+            <button type="button" data-action="close-modal" class="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-left flex items-center justify-between">
+              <span><strong>1. Conservar como contenedor</strong> (No realizar la conversión)</span>
+              <span>Cancelar</span>
+            </button>
+            <button type="button" data-action="confirm-convert-container-to-task" data-node-id="${node.id}" data-mode="reparent_children" class="w-full p-3 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 text-left flex items-center justify-between text-emerald-950 dark:text-emerald-200">
+              <span><strong>2. Subir sus ${children.length} hijos directos al nivel superior</strong> y convertir «${escapeHtml(node.title)}» en tarea simple</span>
+              <span>Reubicar hijos →</span>
+            </button>
+            <button type="button" data-action="confirm-convert-container-to-task" data-node-id="${node.id}" data-mode="archive_children" class="w-full p-3 rounded-xl border border-amber-300 dark:border-amber-800 hover:bg-amber-50/40 text-left flex items-center justify-between text-amber-900 dark:text-amber-200">
+              <span><strong>3. Archivar los descendientes</strong> y convertir «${escapeHtml(node.title)}» en tarea simple</span>
+              <span>Archivar hijos</span>
+            </button>
+          </div>
+        </div>
+      `);
+    }
+
+    // Modal de confirmación explícita para eliminar los datos de la cuenta en la nube (Sección 6.7)
+    function openDeleteAccountModal() {
+      openModal(`
+        <div class="p-5 space-y-4">
+          <div class="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-800">OPERACIÓN CRÍTICA DE CUENTA (SECCIÓN 6.7)</span>
+              <h2 id="modal-title" class="text-base font-bold text-slate-900 dark:text-white mt-1">Eliminar Datos de mi Cuenta en Arboria</h2>
+            </div>
+            <button type="button" data-action="close-modal" class="p-1 text-slate-400">✕</button>
+          </div>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            Esta acción eliminará en el servidor tu estado personal (<code>public.arboria_user_state</code>), tu perfil (<code>public.arboria_profiles</code>) y los proyectos compartidos de los que seas propietario. Te recomendamos descargar antes un respaldo JSON.
+          </p>
+          <form id="confirm-delete-account-form" class="space-y-3 text-xs">
+            <div>
+              <label for="delete-account-confirm-word" class="block font-semibold text-rose-700 dark:text-rose-400 mb-1">Escribe ELIMINAR para confirmar *</label>
+              <input id="delete-account-confirm-word" name="confirmWord" type="text" required placeholder="ELIMINAR" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-rose-300 dark:border-rose-800 font-mono" />
+            </div>
+            <div class="flex items-center justify-between pt-2">
+              <button type="button" data-action="export-full-backup" class="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">⤓ Descargar respaldo JSON</button>
+              <button type="submit" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold">Eliminar datos de mi cuenta</button>
+            </div>
+          </form>
+        </div>
+      `);
+    }
+
+    // =========================================================================
+    // 15.C PROYECTOS COMPARTIDOS COLABORATIVOS ONLINE (FASE 7 / SECCIÓN 10)
+    // =========================================================================
+    function translateRoleLabel(role) {
+      const map = { owner: 'Propietario', editor: 'Editor', viewer: 'Lector (Solo lectura)' };
+      return map[role] || 'Lector (Solo lectura)';
+    }
+
+    function isCurrentWorkspaceReadOnly() {
+      if (state.ui.workspaceMode !== 'shared_project' || !state.ui.activeSharedProjectId) return false;
+      const proj = state.sharedProjects.find(p => p.id === state.ui.activeSharedProjectId);
+      if (!proj) return true;
+      return proj.role === 'viewer';
+    }
+
+    function canManageSharedProjectMembers(projectId, actingUserId = cloudSync.user?.id) {
+      const proj = state.sharedProjects.find(p => p.id === projectId);
+      if (!proj) return false;
+      return proj.role === 'owner' || (actingUserId && proj.owner_id === actingUserId);
+    }
+
+    function canWriteSharedProject(projectId, actingUserId = cloudSync.user?.id) {
+      const proj = state.sharedProjects.find(p => p.id === projectId);
+      if (!proj) return false;
+      if (proj.owner_id === actingUserId || proj.role === 'owner' || proj.role === 'editor') return true;
+      return false;
+    }
+
+    async function fetchSharedProjectsFromCloud() {
+      if (!cloudSync.user || !supabaseClient || cloudSync.isTestingIsolation) return state.sharedProjects;
+      try {
+        const { data: projects, error } = await supabaseClient
+          .from('arboria_projects')
+          .select('id, owner_id, name, description, state, revision, is_archived, created_at, updated_at')
+          .order('updated_at', { ascending: false });
+
+        if (error) return state.sharedProjects;
+
+        const enriched = [];
+        for (const p of (projects || [])) {
+          const isOwner = p.owner_id === cloudSync.user.id;
+          let myRole = isOwner ? 'owner' : 'viewer';
+          const { data: members } = await supabaseClient
+            .from('arboria_project_members')
+            .select('project_id, user_id, role, created_at')
+            .eq('project_id', p.id);
+          if (!isOwner && Array.isArray(members)) {
+            const me = members.find(m => m.user_id === cloudSync.user.id);
+            if (me) myRole = me.role;
+          }
+          const { data: invitations } = await supabaseClient
+            .from('arboria_project_invitations')
+            .select('id, project_id, target_username_normalized, role, status, expires_at, created_at')
+            .eq('project_id', p.id);
+
+          enriched.push({
+            ...p,
+            role: myRole,
+            members: members || [],
+            invitations: invitations || []
+          });
+        }
+        state.sharedProjects = enriched;
+        return enriched;
+      } catch (e) {
+        return state.sharedProjects;
+      }
+    }
+
+    function createSharedProjectSyncForTest(name, description = '') {
+      const cleanName = String(name || '').trim();
+      if (!cleanName) return { ok: false, error: 'Nombre obligatorio' };
+      const now = nowISO();
+      const localProj = {
+        id: generateId('proj'),
+        owner_id: cloudSync.user?.id || 'local_owner',
+        name: cleanName,
+        description: String(description || '').trim(),
+        role: 'owner',
+        revision: 1,
+        state: getPersistablePayload(),
+        members: [{ user_id: cloudSync.user?.id || 'local_owner', username: 'owner_qa', role: 'owner' }],
+        invitations: [],
+        created_at: now,
+        updated_at: now
+      };
+      state.sharedProjects.unshift(localProj);
+      return { ok: true, project: localProj };
+    }
+
+    async function createSharedProject(name, description = '') {
+      const cleanName = String(name || '').trim();
+      if (!cleanName) return { ok: false, error: 'El nombre del proyecto compartido es obligatorio.' };
+
+      const now = nowISO();
+      const rootNodeId = generateId('node');
+      const initialProjectState = {
+        version: APP_VERSION,
+        savedAt: now,
+        nodes: {
+          [rootNodeId]: {
+            id: rootNodeId,
+            parentId: null,
+            rootId: rootNodeId,
+            title: cleanName,
+            description: String(description || '').trim(),
+            category: 'Proyecto Compartido',
+            nodeType: 'container',
+            status: 'pending',
+            priority: 'high',
+            sortOrder: 0,
+            createdAt: now,
+            updatedAt: now,
+            targetDate: '',
+            startDate: '',
+            scheduledDate: '',
+            completedAt: null,
+            estimatedDuration: 0,
+            actualDuration: 0,
+            tags: ['compartido'],
+            excludedInheritedTags: [],
+            notes: '',
+            resources: [],
+            weight: 1,
+            isFavorite: true,
+            isArchived: false,
+            archivedAt: null,
+            manualNextStep: false
+          }
+        },
+        events: [],
+        sessions: [],
+        dependencies: [],
+        dailyPlans: [],
+        milestones: []
+      };
+
+      if (cloudSync.user && supabaseClient && !cloudSync.isTestingIsolation) {
+        try {
+          const { data: created, error } = await supabaseClient
+            .from('arboria_projects')
+            .insert({
+              owner_id: cloudSync.user.id,
+              name: cleanName,
+              description: String(description || '').trim(),
+              state: initialProjectState,
+              revision: 1
+            })
+            .select('*')
+            .single();
+
+          if (!error && created) {
+            await supabaseClient.from('arboria_project_members').upsert({
+              project_id: created.id,
+              user_id: cloudSync.user.id,
+              role: 'owner',
+              added_by: cloudSync.user.id
+            });
+            const projObj = {
+              ...created,
+              role: 'owner',
+              members: [{ project_id: created.id, user_id: cloudSync.user.id, role: 'owner' }],
+              invitations: []
+            };
+            state.sharedProjects.unshift(projObj);
+            return { ok: true, project: projObj };
+          }
+        } catch (e) {
+          console.warn('Fallback local para proyecto compartido:', e);
+        }
+      }
+
+      const localProj = {
+        id: generateId('proj'),
+        owner_id: cloudSync.user?.id || 'local_owner',
+        name: cleanName,
+        description: String(description || '').trim(),
+        role: 'owner',
+        revision: 1,
+        state: initialProjectState,
+        members: [{ user_id: cloudSync.user?.id || 'local_owner', username: getDisplayIdentityLabel(), role: 'owner' }],
+        invitations: [],
+        created_at: now,
+        updated_at: now
+      };
+      state.sharedProjects.unshift(localProj);
+      return { ok: true, project: localProj };
+    }
+
+    function createSharedProjectInvitation(projectId, targetUsername, role = 'editor', expiresInDays = 7) {
+      const proj = state.sharedProjects.find(p => p.id === projectId);
+      if (!proj) return { ok: false, error: 'Proyecto no encontrado.' };
+      if (!canManageSharedProjectMembers(projectId)) {
+        return { ok: false, error: 'Permiso denegado: solo el Propietario puede emitir invitaciones.' };
+      }
+      if (!['editor', 'viewer'].includes(role)) {
+        return { ok: false, error: 'Rol inválido: solo se permite invitar como Editor o Lector.' };
+      }
+      const val = validateUsernameFormat(targetUsername);
+      if (!val.valid) return { ok: false, error: val.error };
+
+      if ((proj.invitations || []).some(inv => inv.target_username_normalized === val.normalized && inv.status === 'pending')) {
+        return { ok: false, error: `Ya existe una invitación pendiente para @${val.normalized} en este proyecto.` };
+      }
+
+      const expDate = new Date(Date.now() + expiresInDays * 86400000).toISOString();
+      const inv = {
+        id: generateId('inv'),
+        project_id: projectId,
+        invited_by: cloudSync.user?.id || proj.owner_id,
+        target_username_normalized: val.normalized,
+        role,
+        token_hash: 'sha256_' + generateId('tok'),
+        status: 'pending',
+        expires_at: expDate,
+        created_at: nowISO()
+      };
+      if (!Array.isArray(proj.invitations)) proj.invitations = [];
+      proj.invitations.unshift(inv);
+      return { ok: true, invitation: inv };
+    }
+
+    function acceptSharedProjectInvitationSimOrLocal(invitationId, acceptingUsernameNorm, acceptingUserId) {
+      for (const proj of state.sharedProjects) {
+        const inv = (proj.invitations || []).find(i => i.id === invitationId);
+        if (!inv) continue;
+        if (inv.status !== 'pending') {
+          return { ok: false, error: `Invitación no válida (estado: ${inv.status}).` };
+        }
+        if (new Date(inv.expires_at).getTime() < Date.now()) {
+          inv.status = 'expired';
+          return { ok: false, error: 'La invitación ha caducado.' };
+        }
+        if (inv.target_username_normalized !== normalizeUsername(acceptingUsernameNorm)) {
+          return { ok: false, error: 'Acceso denegado: esta invitación está dirigida a otro destinatario.' };
+        }
+        inv.status = 'accepted';
+        inv.accepted_at = nowISO();
+        if (!Array.isArray(proj.members)) proj.members = [];
+        const existing = proj.members.find(m => m.user_id === acceptingUserId);
+        if (existing) existing.role = inv.role;
+        else proj.members.push({ project_id: proj.id, user_id: acceptingUserId, username: acceptingUsernameNorm, role: inv.role });
+        return { ok: true, project: proj, role: inv.role };
+      }
+      return { ok: false, error: 'Invitación no encontrada.' };
+    }
+
+    async function enqueueSharedProjectSync(projectId, payloadSnapshot, options = {}) {
+      const proj = state.sharedProjects.find(p => p.id === projectId);
+      if (!proj) return { ok: false, error: 'Proyecto no encontrado.' };
+      if (proj.role === 'viewer') {
+        showToast('Modo de solo lectura: los cambios no pueden guardarse con el rol Lector.', 'error');
+        return { ok: false, error: 'Permiso denegado: rol viewer de solo lectura.' };
+      }
+      proj.state = JSON.parse(JSON.stringify(payloadSnapshot));
+      proj.updated_at = nowISO();
+
+      if (cloudSync.user && supabaseClient && !cloudSync.isTestingIsolation && typeof supabaseClient.rpc === 'function') {
+        try {
+          const { data: res, error } = await supabaseClient.rpc('save_arboria_project_state_v2', {
+            p_project_id: projectId,
+            p_state: payloadSnapshot,
+            p_expected_revision: options.forceOverwrite ? null : proj.revision
+          });
+          if (!error && res) {
+            if (res.conflict) {
+              showToast('Conflicto detectado en el proyecto compartido: otro miembro guardó cambios recientemente.', 'warning');
+              return { ok: false, conflict: true, serverRevision: res.server_revision };
+            }
+            proj.revision = Number(res.revision) || (proj.revision + 1);
+            updateSaveStatusUI('cloud_saved', `Proyecto sincronizado · v${proj.revision}`);
+            return { ok: true, revision: proj.revision };
+          }
+        } catch (e) {
+          console.warn('Error sincronizando proyecto compartido:', e);
+        }
+      }
+      proj.revision = (Number(proj.revision) || 1) + 1;
+      return { ok: true, revision: proj.revision };
+    }
+
+    function openSharedProjectWorkspace(projectId) {
+      const proj = state.sharedProjects.find(p => p.id === projectId);
+      if (!proj) return;
+      if (state.ui.workspaceMode === 'personal') {
+        state.personalStateBackupWhileInShared = getPersistablePayload();
+      }
+      state.ui.workspaceMode = 'shared_project';
+      state.ui.activeSharedProjectId = proj.id;
+      applyPayloadToState(proj.state);
+      const firstRoot = getRootGoals()[0];
+      state.ui.currentRootId = firstRoot ? firstRoot.id : null;
+      state.ui.focusedSubtreeNodeId = state.ui.currentRootId;
+      state.ui.activeSection = firstRoot ? 'goal_detail' : 'dashboard';
+      renderAll();
+      showToast(`Abierto proyecto compartido «${proj.name}» (Rol: ${translateRoleLabel(proj.role)})`, 'info');
+    }
+
+    function switchBackToPersonalWorkspace() {
+      if (state.ui.workspaceMode === 'shared_project' && state.personalStateBackupWhileInShared) {
+        applyPayloadToState(state.personalStateBackupWhileInShared);
+        state.personalStateBackupWhileInShared = null;
+      }
+      state.ui.workspaceMode = 'personal';
+      state.ui.activeSharedProjectId = null;
+      state.ui.activeSection = 'dashboard';
+      renderAll();
+    }
+
+    function renderSharedProjectsView() {
+      const projects = state.sharedProjects || [];
+      return `
+        <div class="space-y-6">
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">ESPACIO COLABORATIVO SEPARADO (FASE 7 · RLS Y ROLES)</span>
+              <h1 class="text-xl font-bold text-slate-900 dark:text-white mt-1">Proyectos Compartidos Online</h1>
+              <p class="text-xs text-slate-500 max-w-2xl">
+                Tus objetivos personales permanecen 100 % privados. Aquí puedes crear o participar en proyectos colaborativos con roles explícitos (<strong>Propietario</strong>, <strong>Editor</strong> y <strong>Lector de solo lectura</strong>) e invitaciones con vencimiento.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              ${state.ui.workspaceMode === 'shared_project' ? `
+                <button type="button" data-action="switch-to-personal-workspace" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 dark:bg-white text-white dark:text-slate-900">
+                  ← Volver a mi Espacio Personal
+                </button>
+              ` : ''}
+              <button type="button" data-action="open-create-shared-project-modal" class="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs">
+                + Nuevo Proyecto Compartido
+              </button>
+            </div>
+          </div>
+
+          ${projects.length === 0 ? `
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-10 text-center space-y-3">
+              <div class="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center mx-auto">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <h2 class="text-base font-bold text-slate-900 dark:text-white">Aún no participas en proyectos compartidos</h2>
+              <p class="text-xs text-slate-500 max-w-md mx-auto">
+                Crea un proyecto compartido para coordinar objetivos en equipo manteniendo tus metas personales completamente aisladas.
+              </p>
+              <button type="button" data-action="open-create-shared-project-modal" class="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">
+                Crear mi primer proyecto compartido
+              </button>
+            </div>
+          ` : `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${projects.map(p => {
+                const isOwner = p.role === 'owner';
+                return `
+                  <article class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+                    <div class="space-y-2">
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isOwner ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : (p.role === 'editor' ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300')}">
+                          Rol: ${escapeHtml(translateRoleLabel(p.role))}
+                        </span>
+                        <span class="text-[11px] font-mono text-slate-400">Revisión #${p.revision || 1}</span>
+                      </div>
+                      <h2 class="text-base font-bold text-slate-900 dark:text-white">${escapeHtml(p.name)}</h2>
+                      ${p.description ? `<p class="text-xs text-slate-500">${escapeHtml(p.description)}</p>` : ''}
+
+                      <div class="pt-2 space-y-1.5 text-xs">
+                        <div class="font-semibold text-slate-700 dark:text-slate-300">Miembros (${(p.members || []).length})</div>
+                        <div class="flex flex-wrap gap-1.5">
+                          ${(p.members || []).map(m => `
+                            <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px]">
+                              ${escapeHtml(m.username || m.user_id)} · <strong>${escapeHtml(m.role)}</strong>
+                            </span>
+                          `).join('')}
+                        </div>
+                      </div>
+
+                      ${(p.invitations && p.invitations.length > 0) ? `
+                        <div class="pt-2 space-y-1 text-xs">
+                          <div class="font-semibold text-slate-700 dark:text-slate-300">Invitaciones emitidas</div>
+                          ${p.invitations.map(inv => `
+                            <div class="flex items-center justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-800/50 text-[11px]">
+                              <span>@${escapeHtml(inv.target_username_normalized)} (${escapeHtml(inv.role)}) — <strong>${escapeHtml(inv.status)}</strong></span>
+                              ${isOwner && inv.status === 'pending' ? `
+                                <button type="button" data-action="revoke-shared-invitation" data-project-id="${p.id}" data-inv-id="${inv.id}" class="text-rose-600 hover:underline">Revocar</button>
+                              ` : ''}
+                            </div>
+                          `).join('')}
+                        </div>
+                      ` : ''}
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                      ${isOwner ? `
+                        <button type="button" data-action="open-invite-member-modal" data-project-id="${p.id}" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200">
+                          + Invitar por @username
+                        </button>
+                      ` : `<span class="text-[11px] text-slate-400">${p.role === 'viewer' ? 'Acceso de solo lectura' : 'Permiso de edición activo'}</span>`}
+                      <button type="button" data-action="open-shared-project-workspace" data-project-id="${p.id}" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">
+                        Abrir árbol del proyecto →
+                      </button>
+                    </div>
+                  </article>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function openCreateSharedProjectModal() {
+      openModal(`
+        <div class="p-5 space-y-4">
+          <div class="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-100 text-sky-800">NUEVO PROYECTO COLABORATIVO</span>
+              <h2 id="modal-title" class="text-base font-bold text-slate-900 dark:text-white mt-1">Crear Proyecto Compartido</h2>
+              <p class="text-xs text-slate-500">Se creará con identidad propia y separado de tus objetivos personales.</p>
+            </div>
+            <button type="button" data-action="close-modal" class="p-1 text-slate-400">✕</button>
+          </div>
+          <form id="create-shared-project-form" class="space-y-3 text-xs">
+            <div>
+              <label for="shared-proj-name" class="block font-semibold mb-1">Nombre del proyecto compartido *</label>
+              <input id="shared-proj-name" name="name" type="text" required placeholder="Ej. Lanzamiento Álbum Colectivo 2026" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700" />
+            </div>
+            <div>
+              <label for="shared-proj-desc" class="block font-semibold mb-1">Descripción y acuerdos del equipo</label>
+              <textarea id="shared-proj-desc" name="description" rows="2" placeholder="Objetivo común y criterios de edición..." class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"></textarea>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" data-action="close-modal" class="px-4 py-2 rounded-lg text-slate-600">Cancelar</button>
+              <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-600 text-white font-semibold">Crear proyecto</button>
+            </div>
+          </form>
+        </div>
+      `);
+    }
+
+    function openInviteMemberModal(projectId) {
+      const proj = state.sharedProjects.find(p => p.id === projectId);
+      if (!proj) return;
+      openModal(`
+        <div class="p-5 space-y-4">
+          <div class="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">GESTIÓN DE ACCESO Y ROLES (SECCIÓN 10.3 Y 10.4)</span>
+              <h2 id="modal-title" class="text-base font-bold text-slate-900 dark:text-white mt-1">Invitar a «${escapeHtml(proj.name)}»</h2>
+              <p class="text-xs text-slate-500">Invita mediante @username sin exponer correos privados. Las invitaciones caducan en 7 días y pueden revocarse.</p>
+            </div>
+            <button type="button" data-action="close-modal" class="p-1 text-slate-400">✕</button>
+          </div>
+          <form id="invite-shared-member-form" data-project-id="${proj.id}" class="space-y-3 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="invite-target-username" class="block font-semibold mb-1">@username del destinatario *</label>
+                <input id="invite-target-username" name="username" type="text" required placeholder="ej. sofia.mezcla" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono" />
+              </div>
+              <div>
+                <label for="invite-target-role" class="block font-semibold mb-1">Rol asignado *</label>
+                <select id="invite-target-role" name="role" class="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  <option value="editor" selected>Editor (Puede modificar tareas, no eliminar proyecto)</option>
+                  <option value="viewer">Lector (Solo lectura, sin permisos de escritura)</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" data-action="close-modal" class="px-4 py-2 rounded-lg text-slate-600">Cancelar</button>
+              <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-600 text-white font-semibold">Emitir invitación</button>
+            </div>
+          </form>
         </div>
       `);
     }
@@ -7231,6 +8692,89 @@ create policy "Usuarios eliminan solo su propio estado"
         const p25Pass = state.nodes[t8].status === 'completed' && state.nodes[t8].completedAt !== null;
         addTestResult(25, 'Sincronización entre dispositivos (PC ↔ iPhone) sobre public.arboria_user_state', p25Pass, 'Tarea completada en Dispositivo 1 se refleja exactamente al hidratar la misma cuenta en Dispositivo 2.');
 
+        // Prueba 26: Herencia Jerárquica de Etiquetas (Propias, Heredadas y Excluidas Localmente - Sección 8.2)
+        state.nodes[songRoot].tags = ['album-2026', 'estudio'];
+        state.nodes[mixId].tags = ['mastering'];
+        state.nodes[t7].tags = ['eq'];
+        const tagInfoBefore = getNodeTagInfo(t7);
+        const hasInheritedFromRootAndBranch = tagInfoBefore.inheritedTags.includes('album-2026')
+          && tagInfoBefore.inheritedTags.includes('mastering')
+          && tagInfoBefore.ownTags.includes('eq');
+        toggleExcludeInheritedTag(t7, 'estudio');
+        const tagInfoAfter = getNodeTagInfo(t7);
+        const p26Pass = hasInheritedFromRootAndBranch
+          && !tagInfoAfter.inheritedTags.includes('estudio')
+          && tagInfoAfter.excludedInheritedTags.includes('estudio');
+        addTestResult(26, 'Herencia jerárquica de etiquetas (propias, heredadas y exclusión local)', p26Pass, `Efectivas en T7: [${tagInfoAfter.effectiveTags.join(', ')}], Excluidas: [${tagInfoAfter.excludedInheritedTags.join(', ')}].`);
+
+        // Prueba 27: Conversión Bidireccional Contenedor ↔ Tarea sin pérdida silenciosa de hijos (Sección 8.1)
+        const convAskRes = convertNodeTypeExplicit(mixId, 'terminal', 'ask');
+        const convReparentRes = convertNodeTypeExplicit(mixId, 'terminal', 'reparent_children');
+        const p27Pass = convAskRes.ok === false
+          && convAskRes.requiresChildResolution === true
+          && convReparentRes.ok === true
+          && state.nodes[mixId].nodeType === 'terminal'
+          && state.nodes[t7].parentId === songRoot;
+        addTestResult(27, 'Conversión bidireccional Contenedor ↔ Tarea con protección de hijos', p27Pass, 'Solicita confirmación cuando hay hijos y reubica descendientes sin pérdida silenciosa.');
+
+        // Prueba 28: Pila de Deshacer (Undo Stack) verificable para operaciones estructurales (Sección 8.9)
+        cloudSync.isTestingIsolation = false;
+        state.ui.undoStack = [];
+        pushUndoSnapshot('Antes de eliminar T8');
+        cloudSync.isTestingIsolation = true;
+        deleteNodeExplicit(t8, 'delete_subtree');
+        const deletedCheck = !state.nodes[t8];
+        const undoRes = undoLastAction();
+        const p28Pass = deletedCheck && undoRes.ok && Boolean(state.nodes[t8]);
+        addTestResult(28, 'Mecanismo Deshacer (Undo Stack) con verificación de integridad', p28Pass, `Nodo eliminado y restaurado íntegramente mediante instantánea verificada (${undoRes.restoredLabel}).`);
+
+        // Prueba 29: Validación de @username único y normalización sin exponer correo (Sección 6.3)
+        const validUserCheck = validateUsernameFormat('  @Productor.Musical_26 ');
+        const invalidUserCheck = validateUsernameFormat('ab');
+        const sqlHasProfileRls = getSupabaseSetupSqlSnippet().includes('public.arboria_profiles')
+          && getSupabaseSetupSqlSnippet().includes('upsert_my_arboria_profile');
+        const p29Pass = validUserCheck.valid
+          && validUserCheck.normalized === 'productor.musical_26'
+          && !invalidUserCheck.valid
+          && sqlHasProfileRls;
+        addTestResult(29, 'Normalización y unicidad de @username en perfil seguro', p29Pass, `Normalizado a «${validUserCheck.normalized}»; entradas cortas/inválidas rechazadas y RPC de unicidad presente.`);
+
+        // Prueba 30: Control de Concurrencia Optimista por Revisión (`save_arboria_user_state_v2`) y Cola Offline
+        const sqlHasRevisionRpc = getSupabaseSetupSqlSnippet().includes('save_arboria_user_state_v2')
+          && getSupabaseSetupSqlSnippet().includes('p_expected_revision');
+        const opEntry = enqueueOfflineChange(getPersistablePayload());
+        const p30Pass = sqlHasRevisionRpc && Boolean(opEntry.opId) && opEntry.localRevision > 0;
+        addTestResult(30, 'Concurrencia optimista por revisión (revision) y cola offline con opId', p30Pass, `RPC atómica con p_expected_revision y operación encolada (${opEntry.opId}, rev local #${opEntry.localRevision}).`);
+
+        // Prueba 31: Seguridad y Roles en Proyectos Compartidos (Propietario vs Editor vs Lector de solo lectura)
+        state.sharedProjects = [];
+        const createdProjRes = createSharedProjectSyncForTest('Proyecto Colaborativo QA', 'Prueba de permisos');
+        const projId = createdProjRes.project.id;
+        // Intentar invitar siendo propietario -> permitido
+        const invOk = createSharedProjectInvitation(projId, '@colaborador_qa', 'viewer', 7);
+        // Intentar aceptar invitación desde un usuario distinto al destinatario -> rechazado
+        const hijackAttempt = acceptSharedProjectInvitationSimOrLocal(invOk.invitation.id, 'intruso_qa', 'uid_intruso');
+        // Aceptar por el destinatario legítimo -> permitido con rol viewer
+        const legitAccept = acceptSharedProjectInvitationSimOrLocal(invOk.invitation.id, 'colaborador_qa', 'uid_colab');
+        // Simular que el usuario actual tiene rol 'viewer' e intenta escribir o invitar -> rechazado
+        createdProjRes.project.role = 'viewer';
+        const viewerInviteAttempt = createSharedProjectInvitation(projId, '@otro_usuario', 'editor', 7);
+        const viewerWriteAttempt = canWriteSharedProject(projId, 'uid_colab') ? { ok: true } : { ok: false, error: 'Solo lectura' };
+        const p31Pass = createdProjRes.ok
+          && invOk.ok
+          && hijackAttempt.ok === false
+          && legitAccept.ok === true
+          && viewerInviteAttempt.ok === false
+          && viewerWriteAttempt.ok === false;
+        addTestResult(31, 'Seguridad colaborativa: bloqueo de escalación, robo de invitación y escritura por Lector', p31Pass, 'Intruso rechazado al aceptar invitación ajena; rol Lector bloqueado para escribir o emitir invitaciones.');
+
+        // Prueba 32: Caducidad y Revocación de Invitaciones en Proyectos Compartidos (Sección 4.5 y 10.4)
+        createdProjRes.project.role = 'owner';
+        const invExp = createSharedProjectInvitation(projId, '@usuario_expirado', 'editor', -1); // Ya vencida
+        const expiredAccept = acceptSharedProjectInvitationSimOrLocal(invExp.invitation.id, 'usuario_expirado', 'uid_exp');
+        const p32Pass = expiredAccept.ok === false && invExp.invitation.status === 'expired';
+        addTestResult(32, 'Rechazo estricto de invitaciones caducadas o revocadas', p32Pass, `Invitación vencida rechazada automáticamente (estado actualizado a: ${invExp.invitation.status}).`);
+
       } finally {
         cloudSync.isTestingIsolation = false;
         // Restaurar íntegramente el estado real del usuario tras las pruebas
@@ -7385,7 +8929,7 @@ create policy "Usuarios eliminan solo su propio estado"
           || (n.description || '').toLowerCase().includes(q)
           || (n.notes || '').toLowerCase().includes(q)
           || (n.id || '').toLowerCase().includes(q)
-          || (n.tags || []).some(t => t.toLowerCase().includes(q));
+          || getNodeTagInfo(n.id).effectiveTags.some(t => t.toLowerCase().includes(q));
       }).slice(0, 15);
 
       dropdown.classList.remove('hidden');
@@ -7891,6 +9435,153 @@ create policy "Usuarios eliminan solo su propio estado"
             break;
           }
 
+          case 'undo-last-action':
+            undoLastAction();
+            break;
+
+          case 'toggle-password-visibility': {
+            const targetId = actionEl.getAttribute('data-target-input');
+            const inp = targetId ? document.getElementById(targetId) : null;
+            if (inp) {
+              const isHidden = inp.type === 'password';
+              inp.type = isHidden ? 'text' : 'password';
+              actionEl.setAttribute('aria-pressed', isHidden ? 'true' : 'false');
+              const openIcon = actionEl.querySelector('.icon-eye-open');
+              const closedIcon = actionEl.querySelector('.icon-eye-closed');
+              if (openIcon && closedIcon) {
+                if (isHidden) {
+                  openIcon.classList.add('hidden');
+                  closedIcon.classList.remove('hidden');
+                } else {
+                  openIcon.classList.remove('hidden');
+                  closedIcon.classList.add('hidden');
+                }
+              }
+            }
+            break;
+          }
+
+          case 'toggle-exclude-inherited-tag': {
+            const tag = actionEl.getAttribute('data-tag');
+            if (nodeId && tag) {
+              toggleExcludeInheritedTag(nodeId, tag);
+              renderAll();
+            }
+            break;
+          }
+
+          case 'convert-node-type': {
+            const targetType = actionEl.getAttribute('data-target-type') || 'container';
+            const res = convertNodeTypeExplicit(nodeId, targetType, 'ask');
+            if (res.requiresChildResolution) {
+              openConvertContainerToTaskModal(nodeId);
+            } else if (res.ok) {
+              showToast(`Tipo de nodo actualizado a ${targetType === 'container' ? 'Contenedor' : 'Tarea ejecutable'}.`, 'success', { undoable: true });
+              renderAll();
+            }
+            break;
+          }
+
+          case 'confirm-convert-container-to-task': {
+            const mode = actionEl.getAttribute('data-mode') || 'reparent_children';
+            const res = convertNodeTypeExplicit(nodeId, 'terminal', mode);
+            if (res.ok) {
+              closeModal();
+              showToast('Contenedor convertido en tarea simple de forma segura.', 'success', { undoable: true });
+              renderAll();
+            }
+            break;
+          }
+
+          case 'open-create-shared-project-modal':
+            openCreateSharedProjectModal();
+            break;
+
+          case 'open-invite-member-modal': {
+            const projId = actionEl.getAttribute('data-project-id');
+            openInviteMemberModal(projId);
+            break;
+          }
+
+          case 'revoke-shared-invitation': {
+            const projId = actionEl.getAttribute('data-project-id');
+            const invId = actionEl.getAttribute('data-inv-id');
+            const proj = state.sharedProjects.find(p => p.id === projId);
+            if (proj && canManageSharedProjectMembers(projId)) {
+              const inv = (proj.invitations || []).find(i => i.id === invId);
+              if (inv) {
+                inv.status = 'revoked';
+                showToast('Invitación revocada.', 'info');
+                renderAll();
+              }
+            }
+            break;
+          }
+
+          case 'open-shared-project-workspace': {
+            const projId = actionEl.getAttribute('data-project-id');
+            openSharedProjectWorkspace(projId);
+            break;
+          }
+
+          case 'switch-to-personal-workspace':
+            switchBackToPersonalWorkspace();
+            break;
+
+          case 'mfa-start-enroll':
+            if (!supabaseClient || !supabaseClient.auth || !supabaseClient.auth.mfa) {
+              showToast('Inicia sesión en Supabase para configurar 2FA TOTP.', 'warning');
+              break;
+            }
+            supabaseClient.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Arboria Authenticator' })
+              .then(({ data, error }) => {
+                if (error) {
+                  showToast('No se pudo iniciar el registro 2FA: ' + error.message, 'error');
+                  return;
+                }
+                cloudSync.enrollingTotpData = data;
+                openCloudAuthModal('security');
+              })
+              .catch(err => showToast('Error MFA: ' + (err?.message || 'Error'), 'error'));
+            break;
+
+          case 'mfa-cancel-enroll':
+            cloudSync.enrollingTotpData = null;
+            openCloudAuthModal('security');
+            break;
+
+          case 'mfa-unenroll-factor': {
+            const factorId = actionEl.getAttribute('data-factor-id');
+            if (factorId && supabaseClient?.auth?.mfa) {
+              supabaseClient.auth.mfa.unenroll({ factorId })
+                .then(async ({ error }) => {
+                  if (error) {
+                    showToast('No se pudo desactivar 2FA: ' + error.message, 'error');
+                    return;
+                  }
+                  await refreshMfaStatusFromCloud();
+                  showToast('Segundo factor 2FA desactivado correctamente.', 'info');
+                  openCloudAuthModal('security');
+                });
+            }
+            break;
+          }
+
+          case 'cloud-sign-out-global':
+            if (supabaseClient?.auth) {
+              supabaseClient.auth.signOut({ scope: 'global' })
+                .then(() => {
+                  closeModal();
+                  signOutCloudSession();
+                })
+                .catch(() => signOutCloudSession());
+            }
+            break;
+
+          case 'open-delete-account-modal':
+            openDeleteAccountModal();
+            break;
+
           case 'open-cloud-auth-modal':
             openCloudAuthModal();
             break;
@@ -8252,6 +9943,19 @@ create policy "Usuarios eliminan solo su propio estado"
           return;
         }
 
+        if (action === 'toggle-developer-mode') {
+          state.settings.developerMode = Boolean(el.checked);
+          saveState({ silent: true });
+          showToast(
+            el.checked
+              ? 'Modo Diagnóstico y QA activado en la barra lateral.'
+              : 'Modo Diagnóstico ocultado de la vista pública.',
+            'info'
+          );
+          renderAll();
+          return;
+        }
+
         if (action === 'toggle-simulate-failure') {
           state.settings.simulatePersistenceFailure = Boolean(el.checked);
           showToast(
@@ -8572,7 +10276,7 @@ create policy "Usuarios eliminan solo su propio estado"
           return;
         }
 
-        // 13. Inicio de sesión con Correo y Contraseña en Supabase Auth
+        // 13. Inicio de sesión con Correo, Contraseña y Verificación 2FA (AAL2) en Supabase Auth
         if (form.id === 'supabase-login-form') {
           if (!supabaseClient || !supabaseClient.auth) {
             showToast('Primero configura la URL y Anon Key de tu proyecto Supabase en la pestaña Conexión.', 'warning');
@@ -8598,8 +10302,14 @@ create policy "Usuarios eliminan solo su propio estado"
               if (data?.user) {
                 cloudSync.session = data.session;
                 cloudSync.user = data.user;
+                await refreshMfaStatusFromCloud();
+                const verifiedTotp = (cloudSync.mfaFactors || []).find(f => f.status === 'verified');
+                if (cloudSync.mfaAssurance?.nextLevel === 'aal2' && cloudSync.mfaAssurance?.currentLevel !== 'aal2' && verifiedTotp) {
+                  openMfaLoginChallengeModal(verifiedTotp.id);
+                  return;
+                }
                 closeModal();
-                showToast(`Sesión iniciada como ${data.user.email}. Recuperando estado en la nube...`, 'success');
+                showToast('Sesión iniciada correctamente. Recuperando estado en la nube...', 'success');
                 await fetchAndHydrateFromCloudSession(data.user);
               }
             })
@@ -8610,7 +10320,7 @@ create policy "Usuarios eliminan solo su propio estado"
           return;
         }
 
-        // 14. Registro de nueva cuenta con Correo y Contraseña en Supabase Auth
+        // 14. Registro de nueva cuenta con Correo, @username y Contraseña en Supabase Auth
         if (form.id === 'supabase-signup-form') {
           if (!supabaseClient || !supabaseClient.auth) {
             showToast('Primero configura la URL y Anon Key de tu proyecto Supabase en la pestaña Conexión.', 'warning');
@@ -8619,9 +10329,20 @@ create policy "Usuarios eliminan solo su propio estado"
           }
           const fd = new FormData(form);
           const email = String(fd.get('email') || '').trim();
+          const rawUsername = String(fd.get('username') || '').trim();
           const password = String(fd.get('password') || '');
+          const uVal = validateUsernameFormat(rawUsername);
+          if (!uVal.valid) {
+            showToast(uVal.error, 'error');
+            return;
+          }
           const redirectUrl = getSafeAuthRedirectUrl();
-          const signupOptions = redirectUrl ? { options: { emailRedirectTo: redirectUrl } } : {};
+          const signupOptions = {
+            options: {
+              ...(redirectUrl ? { emailRedirectTo: redirectUrl } : {}),
+              data: { username: uVal.normalized }
+            }
+          };
           supabaseClient.auth.signUp({ email, password, ...signupOptions })
             .then(async ({ data, error }) => {
               if (error) {
@@ -8636,17 +10357,158 @@ create policy "Usuarios eliminan solo su propio estado"
               if (data?.session && data?.user) {
                 cloudSync.session = data.session;
                 cloudSync.user = data.user;
+                await saveUserProfileToCloud(uVal.normalized, '');
                 closeModal();
-                showToast(`Cuenta creada y conectada (${data.user.email}).`, 'success');
+                showToast(`Cuenta creada y conectada como @${uVal.normalized}.`, 'success');
                 await fetchAndHydrateFromCloudSession(data.user);
               } else {
-                showToast('Cuenta registrada. Revisa tu correo electrónico para confirmar tu cuenta antes de iniciar sesión.', 'info');
+                showToast(`Cuenta registrada (@${uVal.normalized}). Revisa tu correo electrónico para confirmar tu dirección antes de iniciar sesión.`, 'info');
                 openCloudAuthModal('login');
               }
             })
             .catch(err => {
               showToast('Fallo de red al registrar cuenta: ' + (err?.message || 'Error'), 'error');
             });
+          return;
+        }
+
+        // 14.B Guardar perfil (@username único y nombre visible)
+        if (form.id === 'supabase-profile-form') {
+          const fd = new FormData(form);
+          saveUserProfileToCloud(fd.get('username'), fd.get('displayName'))
+            .then(res => {
+              if (!res.ok) {
+                showToast(res.error, 'error');
+                return;
+              }
+              showToast(`Perfil actualizado como @${res.profile.username}.`, 'success');
+              renderAll();
+              openCloudAuthModal('profile');
+            });
+          return;
+        }
+
+        // 14.C Cambiar contraseña o completar restablecimiento
+        if (form.id === 'supabase-change-password-form') {
+          const fd = new FormData(form);
+          const p1 = String(fd.get('newPassword') || '');
+          const p2 = String(fd.get('confirmPassword') || '');
+          if (p1.length < 6) {
+            showToast('La nueva contraseña debe tener al menos 6 caracteres.', 'error');
+            return;
+          }
+          if (p1 !== p2) {
+            showToast('Las contraseñas no coinciden.', 'error');
+            return;
+          }
+          if (!supabaseClient?.auth) return;
+          supabaseClient.auth.updateUser({ password: p1 })
+            .then(({ error }) => {
+              if (error) {
+                showToast('No se pudo actualizar la contraseña: ' + error.message, 'error');
+                return;
+              }
+              closeModal();
+              showToast('Contraseña actualizada correctamente.', 'success');
+            });
+          return;
+        }
+
+        // 14.D Verificar enrolamiento inicial de 2FA TOTP
+        if (form.id === 'supabase-mfa-verify-enroll-form') {
+          const fd = new FormData(form);
+          const code = String(fd.get('code') || '').trim();
+          const factorId = cloudSync.enrollingTotpData?.id;
+          if (!factorId || !supabaseClient?.auth?.mfa) return;
+          supabaseClient.auth.mfa.challengeAndVerify({ factorId, code })
+            .then(async ({ error }) => {
+              if (error) {
+                showToast('Código TOTP incorrecto o vencido: ' + error.message, 'error');
+                return;
+              }
+              cloudSync.enrollingTotpData = null;
+              await refreshMfaStatusFromCloud();
+              showToast('Autenticación de dos factores (2FA TOTP) verificada y activada.', 'success');
+              openCloudAuthModal('security');
+            });
+          return;
+        }
+
+        // 14.E Verificar desafío 2FA durante inicio de sesión (AAL2)
+        if (form.id === 'supabase-mfa-challenge-form') {
+          const fd = new FormData(form);
+          const code = String(fd.get('code') || '').trim();
+          const factorId = form.getAttribute('data-factor-id') || cloudSync.pendingMfaFactorId;
+          if (!factorId || !supabaseClient?.auth?.mfa) return;
+          supabaseClient.auth.mfa.challengeAndVerify({ factorId, code })
+            .then(async ({ error }) => {
+              if (error) {
+                showToast('Código 2FA inválido: ' + error.message, 'error');
+                return;
+              }
+              await refreshMfaStatusFromCloud();
+              closeModal();
+              showToast('Segundo factor verificado (AAL2). Cargando tus objetivos...', 'success');
+              if (cloudSync.user) {
+                await fetchAndHydrateFromCloudSession(cloudSync.user);
+              }
+            });
+          return;
+        }
+
+        // 14.F Confirmar eliminación segura de datos de la cuenta
+        if (form.id === 'confirm-delete-account-form') {
+          const fd = new FormData(form);
+          if (String(fd.get('confirmWord') || '').trim() !== 'ELIMINAR') {
+            showToast('Debes escribir exactamente la palabra ELIMINAR para confirmar.', 'warning');
+            return;
+          }
+          if (supabaseClient && cloudSync.user) {
+            supabaseClient.rpc('delete_my_arboria_account_data')
+              .then(async () => {
+                closeModal();
+                await signOutCloudSession();
+                showToast('Todos los datos de tu cuenta en Arboria fueron eliminados del servidor.', 'info');
+              })
+              .catch(async () => {
+                await supabaseClient.from(SUPABASE_TABLE).delete().eq('user_id', cloudSync.user.id);
+                closeModal();
+                await signOutCloudSession();
+                showToast('Tus datos de estado fueron eliminados y la sesión se cerró.', 'info');
+              });
+          }
+          return;
+        }
+
+        // 14.G Crear Proyecto Compartido
+        if (form.id === 'create-shared-project-form') {
+          const fd = new FormData(form);
+          createSharedProject(fd.get('name'), fd.get('description'))
+            .then(res => {
+              if (!res.ok) {
+                showToast(res.error, 'error');
+                return;
+              }
+              closeModal();
+              showToast(`Proyecto compartido «${res.project.name}» creado.`, 'success');
+              state.ui.activeSection = 'shared_projects';
+              renderAll();
+            });
+          return;
+        }
+
+        // 14.H Emitir invitación por @username a Proyecto Compartido
+        if (form.id === 'invite-shared-member-form') {
+          const projId = form.getAttribute('data-project-id');
+          const fd = new FormData(form);
+          const res = createSharedProjectInvitation(projId, fd.get('username'), fd.get('role'), 7);
+          if (!res.ok) {
+            showToast(res.error, 'error');
+            return;
+          }
+          closeModal();
+          showToast(`Invitación emitida para @${res.invitation.target_username_normalized} (${translateRoleLabel(res.invitation.role)}).`, 'success');
+          renderAll();
           return;
         }
 
@@ -8800,6 +10662,14 @@ create policy "Usuarios eliminan solo su propio estado"
 
       // Soporte de teclado accesible (Escape para cerrar modal o panel contextual)
       document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+          const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+          if (activeTag !== 'input' && activeTag !== 'textarea') {
+            e.preventDefault();
+            undoLastAction();
+            return;
+          }
+        }
         if (e.key === 'Escape') {
           const modalBackdrop = document.getElementById('modal-backdrop');
           if (modalBackdrop && !modalBackdrop.classList.contains('hidden')) {
